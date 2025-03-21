@@ -15,8 +15,7 @@ A bash script for easy installation of AmneziaWG VPN on Linux servers. AmneziaWG
 ## Quick Start
 
 ```bash
-wget -qO amneziawg-install.sh https://raw.githubusercontent.com/ginto-sakata/amneziawg-install/refs/heads/master/amneziawg-install.sh && chmod +x amneziawg-install.sh && ./amneziawg-install.sh
-
+curl -fsSL https://raw.githubusercontent.com/ginto-sakata/amneziawg-install/refs/heads/master/amneziawg-install.sh -o amneziawg-install.sh && chmod +x amneziawg-install.sh && ./amneziawg-install.sh
 ```
 
 ## Website-Specific Routing

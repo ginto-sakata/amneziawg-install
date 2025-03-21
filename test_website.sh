@@ -54,12 +54,11 @@ fi
 
 # 2. Generate data
 cp -r ./iplist/config/ ./static_website/config/ 2>/dev/null || true
+chmod +x generate_data.sh
+./generate_data.sh ./static_website data.json
+
+
 cd static_website
-chmod +x ../generate_data.sh
-../generate_data.sh ./config/ data.json
-
-
-
 # 3. Serve website for testing
 echo "Starting web server on port $WEB_PORT..."
 echo "Visit http://localhost:$WEB_PORT in your browser"

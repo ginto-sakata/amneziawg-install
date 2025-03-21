@@ -53,10 +53,9 @@ else
 fi
 
 # 2. Generate data
-mkdir -p static_website/config/
-cp -r iplist/config/* iplist/config/.* static_website/config/ 2>/dev/null || true
+cp -r ./iplist/config/ ./static_website/config/ 2>/dev/null || true
 cd static_website
-./generate_data.sh
+./generate_data.sh ./config/ data.json
 
 
 

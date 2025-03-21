@@ -58,11 +58,18 @@ chmod +x generate_data.sh
 ./generate_data.sh ./static_website data.json
 
 
-cd static_website
+
+
+# Try to determine the server's IP address
+SERVER_IP=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v 127.0.0.1 | head -1)
+
+# Choose a port
+WEB_PORT=8080
 # 3. Serve website for testing
-echo "Starting web server on port $WEB_PORT..."
-echo "Visit http://localhost:$WEB_PORT in your browser"
-echo "Press Ctrl+C to stop the server"
+echo -e "${GREEN}Starting web server using Python 3 at http://${SERVER_IP}:${WEB_PORT}${NC}"
+echo -e "${GREEN}Please open this URL in your browser.${NC}"
+echo -e "${GREEN}After selecting services, click 'Generate IP List' and copy the result.${NC}"
+echo -e "${ORANGE}Press Ctrl+C when done to continue with the installation.${NC}"
 
 # Use Python's HTTP server if available
 if command -v python3 &>/dev/null; then

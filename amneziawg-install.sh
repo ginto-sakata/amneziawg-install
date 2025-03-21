@@ -1417,7 +1417,7 @@ function startWebServer() {
     else
         echo -e "${ORANGE}Static website not found, creating website files on the fly...${NC}"
         # Create website files - index.html would be created here
-        cat > "${WEBSITE_DIR}/index.html" << 'EOL'
+    cat > "${WEBSITE_DIR}/index.html" << 'EOL'
 <!DOCTYPE html>
 <html lang="en">
 <!-- ... rest of the existing HTML code ... -->

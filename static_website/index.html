@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AmneziaWG Site Selection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f8f8;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+            font-size: 24px;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        .category {
+            margin-bottom: 10px;
+        }
+        .category-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .service {
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            border-radius: 4px;
+            position: relative;
+        }
+        .service:hover {
+            background-color: #f5f5f5;
+        }
+        .service-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 10px;
+            object-fit: contain;
+        }
+        .service-checkbox {
+            margin-right: 8px;
+        }
+        .service-name {
+            font-size: 14px;
+        }
+        .service-url {
+            font-size: 12px;
+            color: #888;
+            margin-left: 5px;
+        }
+        .service-tooltip {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+        .service:hover .service-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .actions {
+            display: flex;
+            justify-content: center;
+            margin-top: 30px;
+            gap: 15px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button#copy-btn {
+            background-color: #2196F3;
+        }
+        button#copy-btn:hover {
+            background-color: #0b7dda;
+        }
+        .output-container {
+            margin-top: 20px;
+            display: none;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            resize: vertical;
+        }
+        .loader {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .loader::after {
+            content: "";
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .category-select-all {
+            font-size: 12px;
+            color: #2196F3;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 999;
+            font-weight: bold;
+        }
+        @media (max-width: 768px) {
+            .services-grid {
+                grid-template-columns: repeat(1, 1fr);
+            }
+        }
+        .search-container {
+            margin-bottom: 20px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pick the websites you want to route through AmnesiaWG</h1>
+        
+        <div class="search-container">
+            <input type="text" id="search-input" class="search-input" placeholder="Search for websites...">
+        </div>
+        
+        <div id="loader" class="loader"></div>
+        
+        <div id="categories" class="categories-grid">
+            <!-- Categories and services will be loaded here -->
+            <div class="loading">Loading categories and services...</div>
+        </div>
+        
+        <div class="actions">
+            <button id="generate-btn">Generate IP List</button>
+            <button id="copy-btn">Copy to Clipboard</button>
+        </div>
+        
+        <div id="output-container" class="output-container">
+            <h3>IP Ranges to Route (copy this list):</h3>
+            <textarea id="output" readonly></textarea>
+        </div>
+    </div>
+    
+    <div id="notification" class="notification">Copied to clipboard!</div>
+    
+    <script>
+        // This will be filled with the actual data structure
+        const servicesData = {};
+        
+        document.addEventListener('DOMContentLoaded', async function() {
+            const loader = document.getElementById('loader');
+            const categoriesContainer = document.getElementById('categories');
+            const generateBtn = document.getElementById('generate-btn');
+            const copyBtn = document.getElementById('copy-btn');
+            const outputContainer = document.getElementById('output-container');
+            const output = document.getElementById('output');
+            const notification = document.getElementById('notification');
+            const searchInput = document.getElementById('search-input');
+            
+            loader.style.display = 'block';
+            categoriesContainer.innerHTML = '';
+            
+            try {
+                // Fetch the data structure
+                const response = await fetch('data.json');
+                const data = await response.json();
+                Object.assign(servicesData, data);
+                
+                // Create the UI
+                for (const [categoryName, category] of Object.entries(data)) {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.className = 'category';
+                    categoryDiv.dataset.category = categoryName;
+                    
+                    const categoryHeader = document.createElement('div');
+                    categoryHeader.className = 'category-title';
+                    
+                    const categoryTitle = document.createElement('span');
+                    categoryTitle.textContent = categoryName;
+                    categoryHeader.appendChild(categoryTitle);
+                    
+                    const selectAll = document.createElement('span');
+                    selectAll.className = 'category-select-all';
+                    selectAll.textContent = 'Select All';
+                    selectAll.addEventListener('click', function() {
+                        const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
+                        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+                        
+                        checkboxes.forEach(cb => {
+                            cb.checked = !allChecked;
+                        });
+                        
+                        selectAll.textContent = allChecked ? 'Select All' : 'Deselect All';
+                    });
+                    
+                    categoryHeader.appendChild(selectAll);
+                    categoryDiv.appendChild(categoryHeader);
+                    
+                    const servicesGrid = document.createElement('div');
+                    servicesGrid.className = 'services-grid';
+                    
+                    for (const [serviceName, service] of Object.entries(category.services)) {
+                        const serviceDiv = document.createElement('div');
+                        serviceDiv.className = 'service';
+                        serviceDiv.dataset.serviceName = serviceName.toLowerCase();
+                        
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.className = 'service-checkbox';
+                        checkbox.id = `service-${categoryName}-${serviceName}`;
+                        checkbox.dataset.category = categoryName;
+                        checkbox.dataset.service = serviceName;
+                        
+                        const icon = document.createElement('img');
+                        icon.className = 'service-icon';
+                        icon.src = service.icon || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+                        icon.alt = serviceName;
+                        
+                        const nameContainer = document.createElement('div');
+                        
+                        const name = document.createElement('span');
+                        name.className = 'service-name';
+                        name.textContent = serviceName;
+                        
+                        // Extract domain from service name
+                        let domain = serviceName.toLowerCase().replace(/\s+/g, '-');
+                        
+                        // Add common TLDs if not present
+                        if (!domain.includes('.')) {
+                            if (service.url) {
+                                domain = service.url;
+                            } else if (domain.match(/^[a-z0-9-]+$/)) {
+                                domain = domain + '.com';
+                            }
+                        }
+                        
+                        const url = document.createElement('span');
+                        url.className = 'service-url';
+                        url.textContent = `(${domain})`;
+                        
+                        // Create tooltip with description
+                        const tooltip = document.createElement('span');
+                        tooltip.className = 'service-tooltip';
+                        tooltip.textContent = service.description || `Website for ${serviceName}`;
+                        
+                        nameContainer.appendChild(name);
+                        nameContainer.appendChild(url);
+                        
+                        serviceDiv.appendChild(checkbox);
+                        serviceDiv.appendChild(icon);
+                        serviceDiv.appendChild(nameContainer);
+                        serviceDiv.appendChild(tooltip);
+                        servicesGrid.appendChild(serviceDiv);
+                    }
+                    
+                    categoryDiv.appendChild(servicesGrid);
+                    categoriesContainer.appendChild(categoryDiv);
+                }
+                
+                // Setup search functionality
+                searchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase();
+                    const categories = document.querySelectorAll('.category');
+                    
+                    categories.forEach(category => {
+                        const services = category.querySelectorAll('.service');
+                        let hasVisibleServices = false;
+                        
+                        services.forEach(service => {
+                            const serviceName = service.dataset.serviceName || '';
+                            const shouldShow = serviceName.includes(searchTerm);
+                            service.style.display = shouldShow ? 'flex' : 'none';
+                            if (shouldShow) hasVisibleServices = true;
+                        });
+                        
+                        category.style.display = hasVisibleServices ? 'block' : 'none';
+                    });
+                });
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                categoriesContainer.innerHTML = '<div>Error loading services. Please try again.</div>';
+            } finally {
+                loader.style.display = 'none';
+            }
+            
+            generateBtn.addEventListener('click', function() {
+                const selectedCIDRs = [];
+                const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+                
+                if (checkboxes.length === 0) {
+                    alert('Please select at least one service');
+                    return;
+                }
+                
+                for (const checkbox of checkboxes) {
+                    const category = checkbox.dataset.category;
+                    const service = checkbox.dataset.service;
+                    
+                    if (servicesData[category] && servicesData[category].services[service]) {
+                        selectedCIDRs.push(...servicesData[category].services[service].cidrs);
+                    }
+                }
+                
+                if (selectedCIDRs.length > 0) {
+                    output.value = selectedCIDRs.join(',');
+                    outputContainer.style.display = 'block';
+                } else {
+                    alert('No IP ranges found for selected services');
+                }
+            });
+            
+            copyBtn.addEventListener('click', function() {
+                if (output.value.trim() === '') {
+                    alert('Please generate the IP list first');
+                    return;
+                }
+                
+                output.select();
+                
+                try {
+                    // Use modern clipboard API if available
+                    const successful = document.execCommand('copy');
+                    
+                    if (successful) {
+                        // Show notification
+                        notification.style.display = 'block';
+                        setTimeout(() => {
+                            notification.style.display = 'none';
+                        }, 2000);
+                    } else {
+                        // Fallback to clipboard API
+                        navigator.clipboard.writeText(output.value).then(
+                            function() {
+                                notification.style.display = 'block';
+                                setTimeout(() => {
+                                    notification.style.display = 'none';
+                                }, 2000);
+                            },
+                            function() {
+                                alert('Failed to copy text to clipboard');
+                            }
+                        );
+                    }
+                } catch (err) {
+                    console.error('Unable to copy', err);
+                    alert('Failed to copy text to clipboard');
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

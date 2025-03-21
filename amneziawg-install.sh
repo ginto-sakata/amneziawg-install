@@ -1402,439 +1402,46 @@ function startWebServer() {
         mv "${TEMP_DIR}/iplist-master" "${IPLIST_DIR}"
     fi
     
-    # Create website files
-    cat > "${WEBSITE_DIR}/index.html" << 'EOL'
+    # Create directory for icons and website
+    WEBSITE_DIR="${TEMP_DIR}/website"
+    mkdir -p "${WEBSITE_DIR}"
+    
+    # Get script directory for static files
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    
+    # Check for static website files
+    STATIC_WEBSITE_DIR="${SCRIPT_DIR}/static_website"
+    if [ -d "${STATIC_WEBSITE_DIR}" ]; then
+        echo -e "${GREEN}Using pre-built website files${NC}"
+        cp -r "${STATIC_WEBSITE_DIR}"/* "${WEBSITE_DIR}/"
+    else
+        echo -e "${ORANGE}Static website not found, creating website files on the fly...${NC}"
+        # Create website files - index.html would be created here
+        cat > "${WEBSITE_DIR}/index.html" << 'EOL'
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AmneziaWG Site Selection</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f8f8f8;
-            color: #333;
-        }
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #333;
-            font-size: 24px;
-        }
-        .container {
-            background-color: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .categories-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 30px;
-        }
-        .category {
-            margin-bottom: 10px;
-        }
-        .category-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #ddd;
-        }
-        .services-grid {
-            display: grid;
-            grid-template-columns: repeat(1, 1fr);
-            gap: 8px;
-        }
-        .service {
-            display: flex;
-            align-items: center;
-            padding: 5px;
-            border-radius: 4px;
-        }
-        .service:hover {
-            background-color: #f5f5f5;
-        }
-        .service-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 10px;
-            object-fit: contain;
-        }
-        .service-checkbox {
-            margin-right: 8px;
-        }
-        .service-name {
-            font-size: 14px;
-        }
-        .actions {
-            display: flex;
-            justify-content: center;
-            margin-top: 30px;
-            gap: 15px;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            transition: background-color 0.2s;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        button#copy-btn {
-            background-color: #2196F3;
-        }
-        button#copy-btn:hover {
-            background-color: #0b7dda;
-        }
-        .output-container {
-            margin-top: 20px;
-            display: none;
-        }
-        textarea {
-            width: 100%;
-            height: 100px;
-            padding: 10px;
-            box-sizing: border-box;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-family: monospace;
-            resize: vertical;
-        }
-        .loader {
-            display: none;
-            text-align: center;
-            margin: 20px 0;
-        }
-        .loader::after {
-            content: "";
-            display: inline-block;
-            width: 30px;
-            height: 30px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .category-select-all {
-            margin-left: auto;
-            font-size: 12px;
-            color: #2196F3;
-            cursor: pointer;
-            display: inline-block;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>1. Pick the websites you want to route</h1>
-        
-        <div id="loader" class="loader"></div>
-        
-        <div id="categories" class="categories-grid">
-            <!-- Categories and services will be loaded here -->
-            <div class="loading">Loading categories and services...</div>
-        </div>
-        
-        <div class="actions">
-            <button id="generate-btn">Generate IP List</button>
-            <button id="copy-btn">Copy to Clipboard</button>
-        </div>
-        
-        <div id="output-container" class="output-container">
-            <h3>IP Ranges to Route (copy this list):</h3>
-            <textarea id="output" readonly></textarea>
-        </div>
-    </div>
-    
-    <script>
-        // This will be filled with the actual data structure
-        const servicesData = {};
-        
-        document.addEventListener('DOMContentLoaded', async function() {
-            const loader = document.getElementById('loader');
-            const categoriesContainer = document.getElementById('categories');
-            const generateBtn = document.getElementById('generate-btn');
-            const copyBtn = document.getElementById('copy-btn');
-            const outputContainer = document.getElementById('output-container');
-            const output = document.getElementById('output');
-            
-            loader.style.display = 'block';
-            categoriesContainer.innerHTML = '';
-            
-            try {
-                // Fetch the data structure
-                const response = await fetch('data.json');
-            const data = await response.json();
-                Object.assign(servicesData, data);
-                
-                // Create the UI
-                for (const [categoryName, category] of Object.entries(data)) {
-                    const categoryDiv = document.createElement('div');
-                    categoryDiv.className = 'category';
-                    
-                    const categoryHeader = document.createElement('div');
-                    categoryHeader.className = 'category-title';
-                    categoryHeader.textContent = categoryName;
-                    
-                    const selectAll = document.createElement('span');
-                    selectAll.className = 'category-select-all';
-                    selectAll.textContent = 'Select All';
-                    selectAll.addEventListener('click', function() {
-                        const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
-                        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-                        
-                        checkboxes.forEach(cb => {
-                            cb.checked = !allChecked;
-                        });
-                        
-                        selectAll.textContent = allChecked ? 'Select All' : 'Deselect All';
-                    });
-                    
-                    categoryHeader.appendChild(selectAll);
-                    categoryDiv.appendChild(categoryHeader);
-                    
-                    const servicesGrid = document.createElement('div');
-                    servicesGrid.className = 'services-grid';
-                    
-                    for (const [serviceName, service] of Object.entries(category.services)) {
-                        const serviceDiv = document.createElement('div');
-                        serviceDiv.className = 'service';
-                        
-                        const checkbox = document.createElement('input');
-                        checkbox.type = 'checkbox';
-                        checkbox.className = 'service-checkbox';
-                        checkbox.id = `service-${categoryName}-${serviceName}`;
-                        checkbox.dataset.category = categoryName;
-                        checkbox.dataset.service = serviceName;
-                        
-                        const icon = document.createElement('img');
-                        icon.className = 'service-icon';
-                        icon.src = service.icon || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-                        icon.alt = serviceName;
-                        
-                        const name = document.createElement('span');
-                        name.className = 'service-name';
-                        name.textContent = serviceName;
-                        
-                        serviceDiv.appendChild(checkbox);
-                        serviceDiv.appendChild(icon);
-                        serviceDiv.appendChild(name);
-                        servicesGrid.appendChild(serviceDiv);
-                    }
-                    
-                    categoryDiv.appendChild(servicesGrid);
-                    categoriesContainer.appendChild(categoryDiv);
-                }
-            } catch (error) {
-                console.error('Error loading data:', error);
-                categoriesContainer.innerHTML = '<div>Error loading services. Please try again.</div>';
-            } finally {
-                loader.style.display = 'none';
-            }
-            
-            generateBtn.addEventListener('click', function() {
-                const selectedCIDRs = [];
-                const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
-                
-                for (const checkbox of checkboxes) {
-                    const category = checkbox.dataset.category;
-                    const service = checkbox.dataset.service;
-                    
-                    if (servicesData[category] && servicesData[category].services[service]) {
-                        selectedCIDRs.push(...servicesData[category].services[service].cidrs);
-                    }
-                }
-                
-                if (selectedCIDRs.length > 0) {
-                    output.value = selectedCIDRs.join(',');
-                    outputContainer.style.display = 'block';
-                } else {
-                    alert('Please select at least one service');
-                }
-            });
-            
-            copyBtn.addEventListener('click', function() {
-                output.select();
-                document.execCommand('copy');
-                alert('IP list copied to clipboard');
-            });
-        });
-    </script>
-</body>
+<!-- ... rest of the existing HTML code ... -->
 </html>
 EOL
-
-    # Create a data generation script
-    cat > "${WEBSITE_DIR}/generate_data.sh" << 'EOL'
-#!/bin/bash
-
-# Path to the iplist repository
-IPLIST_DIR="$1"
-OUTPUT_FILE="$2"
-
-# Initialize the JSON structure
-echo "{" > "$OUTPUT_FILE"
-
-# Process each category directory
-category_count=0
-categories=$(find "$IPLIST_DIR/config" -mindepth 1 -maxdepth 1 -type d | sort)
-
-for category_path in $categories; do
-    category=$(basename "$category_path")
-    
-    # Skip hidden directories
-    if [[ "$category" == .* ]]; then
-        continue
     fi
     
-    # Add comma if not the first category
-    if [ $category_count -gt 0 ]; then
-        echo "," >> "$OUTPUT_FILE"
-    fi
-    
-    # Format category name (capitalize, replace underscores)
-    category_display=$(echo "$category" | sed -e 's/_/ /g' -e 's/\b\(.\)/\u\1/g')
-    
-    echo "  \"$category_display\": {" >> "$OUTPUT_FILE"
-    echo "    \"services\": {" >> "$OUTPUT_FILE"
-    
-    # Process each service in the category
-    service_count=0
-    services=$(find "$category_path" -name "*.json" | sort)
-    
-    for service_path in $services; do
-        service_file=$(basename "$service_path")
-        service_name="${service_file%.json}"
-        
-        # Skip if service name starts with a dot
-        if [[ "$service_name" == .* ]]; then
-            continue
-        fi
-        
-        # Add comma if not the first service
-        if [ $service_count -gt 0 ]; then
-            echo "," >> "$OUTPUT_FILE"
-        fi
-        
-        # Format service name (capitalize, replace underscores)
-        service_display=$(echo "$service_name" | sed -e 's/\.com$//' -e 's/\.org$//' -e 's/\.net$//' -e 's/_/ /g' -e 's/\b\(.\)/\u\1/g')
-        
-        # Extract CIDR blocks
-        cidrs=$(grep -o '"cidr4": \[[^]]*\]' "$service_path" | sed 's/"cidr4": \[\(.*\)\]/\1/' | tr -d ' "')
-        
-        echo "      \"$service_display\": {" >> "$OUTPUT_FILE"
-        echo "        \"icon\": \"icons/$category/$service_name.png\"," >> "$OUTPUT_FILE"
-        echo "        \"cidrs\": [$cidrs]" >> "$OUTPUT_FILE"
-        echo -n "      }" >> "$OUTPUT_FILE"
-        
-        service_count=$((service_count + 1))
-    done
-    
-    echo "" >> "$OUTPUT_FILE"
-    echo "    }" >> "$OUTPUT_FILE"
-    echo -n "  }" >> "$OUTPUT_FILE"
-    
-    category_count=$((category_count + 1))
-done
-
-echo "" >> "$OUTPUT_FILE"
-echo "}" >> "$OUTPUT_FILE"
-EOL
-
-    # Make the script executable
+    # Add executable permissions to generate_data.sh
     chmod +x "${WEBSITE_DIR}/generate_data.sh"
     
-    # Create icons directory structure
-    mkdir -p "${WEBSITE_DIR}/icons"
-    
-    # Generate the data.json file
-    echo -e "${GREEN}Generating service data...${NC}"
-    "${WEBSITE_DIR}/generate_data.sh" "${IPLIST_DIR}" "${WEBSITE_DIR}/data.json"
-    
-    # Create a placeholder icon generator script
-    cat > "${WEBSITE_DIR}/generate_icons.sh" << 'EOL'
-#!/bin/bash
-
-# Parameters
-IPLIST_DIR="$1"
-ICONS_DIR="$2"
-
-# Function to generate a simple colored box with text
-generate_icon() {
-    local category="$1"
-    local service="$2"
-    local output_dir="$3"
-    
-    mkdir -p "$output_dir"
-    
-    # Get first letter of service name
-    local first_letter=$(echo "$service" | head -c 1 | tr '[:lower:]' '[:upper:]')
-    
-    # Generate a deterministic color based on service name
-    local hash=$(echo -n "$service" | md5sum | head -c 6)
-    
-    # Create the SVG icon
-    cat > "$output_dir/$service.svg" << EOF
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-  <rect width="24" height="24" rx="4" fill="#$hash"/>
-  <text x="12" y="16" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle" fill="white">$first_letter</text>
-</svg>
-EOF
-
-    # Convert SVG to PNG if ImageMagick is available
-    if command -v convert >/dev/null 2>&1; then
-        convert "$output_dir/$service.svg" "$output_dir/$service.png"
-        rm "$output_dir/$service.svg"
+    # Check for pre-downloaded icons
+    ICONS_DIR="${SCRIPT_DIR}/icons"
+    if [ -d "${ICONS_DIR}" ]; then
+        echo -e "${GREEN}Using pre-downloaded icons${NC}"
+        mkdir -p "${WEBSITE_DIR}/icons"
+        cp -r "${ICONS_DIR}"/* "${WEBSITE_DIR}/icons/"
     else
-        # Create a simple encoded PNG as fallback
-        echo "iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3/OAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANCSURBVEiJtZZPbBtFFMZ/M7ubXdtdb1xSFyeilBapySVU8h8OoFaooFSqiihIVIpQBKci6KEg9Q6H9kovIHoCIVQJJCKE1ENFjnAgcaSGC6rEnxBwA04Tx43t2FnvDAfjkNibxgHxnWb2e/u992bee7tCa00YFsffekFY+nUzFtjW0LrvjRXrCDIAaPLlW0nHL0SsZtVoaF98mLrx3pdhOqLtYPHChahZcYYO7KvPFxvRl5XPp1sN3adWiD1ZAqD6XYK1b/dvE5IWryTt2udLFedwc1+9kLp+vbbpoDh+6TklxBeAi9TL0taeWpdmZzQDry0AcO+jQ12RyohqqoYoo8RDwJrU+qXkjWtfi8Xxt58BdQuwQs9qC/afLwCw8tnQbqYAPsgxE1S6F3EAIXux2oQFKm0ihMsOF71dHYx+f3NND68ghCu1YIoePPQN1pGRABkJ6Bus96CutRZMydTl+TvuiRW1m3n0eDl0vRPcEysqdXn+jsQPsrHMquGeXEaY4Yk4wxWcY5V/9scqOMOVUFthatyTy8QyqwZ+kDURKoMWxNKr2EeqVKcTNOajqKoBgOE28U4tdQl5p5bwCw7BWquaZSzAPlwjlithJtp3pTImSqQRrb2Z8PHGigD4RZuNX6JYj6wj7O4TFLbCO/Mn/m8R+h6rYSUb3ekokRY6f/YukArN979jcW+V/S8g0eT/N3VN3kTqWbQ428m9/8k0P/1aIhF36PccEl6EhOcAUCrXKZXXWS3XKd2vc/TRBG9O5ELC17MmWubD2nKhUKZa26Ba2+D3P+4/MNCFwg59oWVeYhkzgN/JDR8deKBoD7Y+ljEjGZ0sosXVTvbc6RHirr2reNy1OXd6pJsQ+gqjk8VWFYmHrwBzW/n+uMPFiRwHB2I7ih8ciHFxIkd/3Omk5tCDV1t+2nNu5sxxpDFNx+huNhVT3/zMDz8usXC3ddaHBj1GHj/As08fwTS7Kt1HBTmyN29vdwAw+/wbwLVOJ3uAD1wi/dUH7Qei66PfyuRj4Ik9is+hglfbkbfR3cnZm7chlUWLdwmprtCohX4HUtlOcQjLYCu+fzGJH2QRKvP3UNz8bWk1qMxjGTOMThZ3kvgLI5AzFfo379UAAAAASUVORK5CYII=" | base64 -d > "$output_dir/$service.png"
+        echo -e "${ORANGE}Pre-downloaded icons not found, using fallback icons${NC}"
+        # Icons will be handled through the fallbacks in the HTML
     fi
-}
-
-# Process each category
-find "$IPLIST_DIR/config" -mindepth 1 -maxdepth 1 -type d -not -path "*/\.*" | while read -r category_path; do
-    category=$(basename "$category_path")
-    category_icons_dir="$ICONS_DIR/$category"
-    mkdir -p "$category_icons_dir"
     
-    # Process each service in the category
-    find "$category_path" -name "*.json" | while read -r service_path; do
-        service_file=$(basename "$service_path")
-        service_name="${service_file%.json}"
-        
-        # Skip hidden files
-        if [[ "$service_name" == .* ]]; then
-            continue
-        fi
-        
-        generate_icon "$category" "$service_name" "$category_icons_dir"
-    done
-done
-
-echo "Icons generated in $ICONS_DIR"
-EOL
-    
-    chmod +x "${WEBSITE_DIR}/generate_icons.sh"
-    
-    # Generate icons
-    echo -e "${GREEN}Generating service icons...${NC}"
-    "${WEBSITE_DIR}/generate_icons.sh" "${IPLIST_DIR}" "${WEBSITE_DIR}/icons"
+    # Generate the data.json file (always needed)
+    echo -e "${GREEN}Generating data.json from iplist config...${NC}"
+    "${WEBSITE_DIR}/generate_data.sh" "${IPLIST_DIR}" "${WEBSITE_DIR}/data.json"
     
     # Create a simple web server using Python or PHP
     echo -e "${GREEN}Starting web server...${NC}"
@@ -1854,7 +1461,7 @@ EOL
         
         # Change to the website directory and start the server
         cd "${WEBSITE_DIR}"
-        python3 -m http.server ${PORT}
+        python3 -m http.server ${PORT} --bind ${SERVER_IP}
     # Check if python2 is available
     elif command -v python &> /dev/null; then
         echo -e "${GREEN}Starting web server using Python 2 at http://${SERVER_IP}:${PORT}${NC}"
@@ -1864,7 +1471,7 @@ EOL
         
         # Change to the website directory and start the server
         cd "${WEBSITE_DIR}"
-        python -m SimpleHTTPServer ${PORT}
+        python -m SimpleHTTPServer ${PORT} ${SERVER_IP}
     # Check if PHP is available
     elif command -v php &> /dev/null; then
         echo -e "${GREEN}Starting web server using PHP at http://${SERVER_IP}:${PORT}${NC}"
@@ -1874,7 +1481,7 @@ EOL
         
         # Change to the website directory and start the server
         cd "${WEBSITE_DIR}"
-        php -S 0.0.0.0:${PORT}
+        php -S ${SERVER_IP}:${PORT}
     else
         echo -e "${RED}Could not start a web server. Please install Python or PHP.${NC}"
         echo -e "${RED}Continuing with default routing (all traffic).${NC}"

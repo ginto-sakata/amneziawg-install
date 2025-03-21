@@ -5,21 +5,19 @@
 # Usage: ./download_favicons.sh <output_icons_dir>
 
 # Parameters
-ICONS_DIR="$1"
+DEFAULT_ICONS_DIR="./icons"
+ICONS_DIR="${1:-$DEFAULT_ICONS_DIR}"
 AMNEZIAWG_DIR=~/amneziawg
 IPLIST_DIR="${AMNEZIAWG_DIR}/iplist"
 IPLIST_CONFIG="${IPLIST_DIR}/config"
 
 # Check if output directory is provided
 if [ -z "$ICONS_DIR" ]; then
-    echo "Usage: $0 <output_icons_dir>"
-    echo "Example: $0 ./icons"
-    echo ""
-    echo "The script will automatically clone the iplist repository,"
-    echo "scan all JSON files in the config directory and download favicons for each website."
-    echo ""
-    exit 1
+    echo "Using default output directory: $DEFAULT_ICONS_DIR"
+    ICONS_DIR="$DEFAULT_ICONS_DIR"
 fi
+
+echo "Icons will be saved to: $(realpath "$ICONS_DIR")"
 
 # Create amneziawg directory if it doesn't exist
 mkdir -p "$AMNEZIAWG_DIR"
@@ -54,8 +52,10 @@ if [ ! -d "$IPLIST_CONFIG" ]; then
     exit 1
 fi
 
-# Create output directory
-mkdir -p "$ICONS_DIR"
+# Create output directory (using absolute path based on script location)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ABSOLUTE_ICONS_DIR="$(realpath "${SCRIPT_DIR}/${ICONS_DIR}")"
+mkdir -p "$ABSOLUTE_ICONS_DIR"
 
 download_favicon() {
     local domain="$1"
@@ -108,7 +108,7 @@ download_favicon() {
 }
 
 echo "Starting favicon download from iplist config at $IPLIST_CONFIG"
-echo "Favicons will be saved to $ICONS_DIR"
+echo "Favicons will be saved to $ABSOLUTE_ICONS_DIR"
 echo "---------------------------------------------"
 
 # Process each category folder in the iplist config
@@ -147,10 +147,14 @@ for category_path in "$IPLIST_CONFIG"/*; do
         service_name="$domain"
         
         # Download favicon for this domain
-        download_favicon "$domain" "$category" "$ICONS_DIR" "$service_name"
+        download_favicon "$domain" "$category" "$ABSOLUTE_ICONS_DIR" "$service_name"
     done
 done
 
 echo "---------------------------------------------"
-echo "Favicon download complete. Results saved to $ICONS_DIR"
-echo "Add these favicons to git with: git add $ICONS_DIR" 
+echo "Favicon download complete. Results saved to $ABSOLUTE_ICONS_DIR"
+echo "Add these favicons to git with: git add $ICONS_DIR"
+
+# Create a .gitkeep file in each category directory
+# This ensures that empty directories are still tracked by git
+find "$ABSOLUTE_ICONS_DIR" -type d -empty -exec touch {}/.gitkeep \; 

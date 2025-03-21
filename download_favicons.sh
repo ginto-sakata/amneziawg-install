@@ -1,28 +1,28 @@
 #!/bin/bash
 
-# Standalone script to download favicons for all websites in the site list
+# Standalone script to download favicons from iplist repository config
 # This script should be run once to generate favicons that will be committed to git
-# Usage: ./download_favicons.sh <websites_list_file> <output_icons_dir>
+# Usage: ./download_favicons.sh <path_to_iplist_repo_config> <output_icons_dir>
 
 # Parameters
-SITES_FILE="$1"
+IPLIST_CONFIG="$1"
 ICONS_DIR="$2"
 
-if [ -z "$SITES_FILE" ] || [ -z "$ICONS_DIR" ]; then
-    echo "Usage: $0 <websites_list_file> <output_icons_dir>"
-    echo "Example: $0 sites.txt ./icons"
+if [ -z "$IPLIST_CONFIG" ] || [ -z "$ICONS_DIR" ]; then
+    echo "Usage: $0 <path_to_iplist_repo_config> <output_icons_dir>"
+    echo "Example: $0 ./iplist/config ./icons"
     echo ""
-    echo "Format of websites_list_file should be:"
-    echo "category1:website1.com"
-    echo "category1:website2.com"
-    echo "category2:website3.org"
+    echo "The script will scan all JSON files in the iplist config directory"
+    echo "and download favicons for each website."
     echo ""
     exit 1
 fi
 
-# Check if sites file exists
-if [ ! -f "$SITES_FILE" ]; then
-    echo "Error: Sites file '$SITES_FILE' not found."
+# Check if iplist config directory exists
+if [ ! -d "$IPLIST_CONFIG" ]; then
+    echo "Error: iplist config directory '$IPLIST_CONFIG' not found."
+    echo "Please clone the repository first with:"
+    echo "git clone https://github.com/rekryt/iplist.git"
     exit 1
 fi
 
@@ -85,27 +85,49 @@ download_favicon() {
     return 1
 }
 
-echo "Starting favicon download for all sites in $SITES_FILE"
+echo "Starting favicon download from iplist config at $IPLIST_CONFIG"
 echo "Favicons will be saved to $ICONS_DIR"
 echo "---------------------------------------------"
 
-# Process each site in the sites file
-while IFS=: read -r category domain || [ -n "$domain" ]; do
-    # Skip empty lines and comments
-    if [[ -z "$category" || "$category" == \#* ]]; then
+# Process each category folder in the iplist config
+for category_path in "$IPLIST_CONFIG"/*; do
+    # Skip if not a directory
+    if [ ! -d "$category_path" ]; then
         continue
     fi
     
-    # Clean up domain and category
-    domain=$(echo "$domain" | tr -d ' ')
-    category=$(echo "$category" | tr -d ' ')
+    # Get category name from directory name
+    category=$(basename "$category_path")
     
-    # Extract service name from domain (remove extensions)
-    service_name=$(echo "$domain" | sed -E 's/\.(com|org|net|io|app)$//')
+    # Skip hidden directories
+    if [[ "$category" == .* ]]; then
+        continue
+    fi
     
-    # Download favicon for this site
-    download_favicon "$domain" "$category" "$ICONS_DIR" "$service_name"
-done < "$SITES_FILE"
+    echo "Processing category: $category"
+    
+    # Process each JSON file in the category
+    for json_file in "$category_path"/*.json; do
+        # Skip if not a file
+        if [ ! -f "$json_file" ]; then
+            continue
+        fi
+        
+        # Get domain name from filename
+        domain=$(basename "$json_file" .json)
+        
+        # Skip if hidden file
+        if [[ "$domain" == .* ]]; then
+            continue
+        fi
+        
+        # Extract service name (same as domain in this case)
+        service_name="$domain"
+        
+        # Download favicon for this domain
+        download_favicon "$domain" "$category" "$ICONS_DIR" "$service_name"
+    done
+done
 
 echo "---------------------------------------------"
 echo "Favicon download complete. Results saved to $ICONS_DIR"

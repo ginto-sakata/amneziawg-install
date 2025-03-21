@@ -45,7 +45,11 @@ if [ -d "iplist" ]; then
     cd ..
 else
     echo "Cloning iplist repository..."
-    git clone https://github.com/iplist/iplist.git
+        git clone -n --depth=1 --filter=tree:0 https://github.com/rekryt/iplist
+        cd iplist
+        git sparse-checkout set --no-cone /config
+        git checkout
+        cd ..
 fi
 
 # 2. Create website directory and copy files

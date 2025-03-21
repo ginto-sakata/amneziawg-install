@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Secure AmneziaWG server installer
+# AmneziaWG server installer
 # Based on https://github.com/angristan/wireguard-install
 
 RED='\033[0;31m'
@@ -1126,10 +1126,10 @@ function configureObfuscationSettings() {
         read -rp "Maximum junk size (Jmax) [${JMIN}-500, default 70]: " -e CUSTOM_JMAX
         JMAX=${CUSTOM_JMAX:-70}
         
-        read -rp "Init packet junk size (S1) [10-200, default 50]: " -e CUSTOM_S1
+        read -rp "Init packet junk size (S1) [10-1280, default 50]: " -e CUSTOM_S1
         S1=${CUSTOM_S1:-50}
         
-        read -rp "Response packet junk size (S2) [10-300, default 100]: " -e CUSTOM_S2
+        read -rp "Response packet junk size (S2) [10-1280, default 100]: " -e CUSTOM_S2
         S2=${CUSTOM_S2:-100}
         
         read -rp "Magic header 1 (H1) [5-999999, default random]: " -e CUSTOM_H1
@@ -1402,45 +1402,11 @@ function startWebServer() {
         mv "${TEMP_DIR}/iplist-master" "${IPLIST_DIR}"
     fi
     
-    # Create directory for icons and website
-    WEBSITE_DIR="${TEMP_DIR}/website"
-    mkdir -p "${WEBSITE_DIR}"
-    
-    # Get script directory for static files
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    
-    # Check for static website files
-    STATIC_WEBSITE_DIR="${SCRIPT_DIR}/static_website"
-    if [ -d "${STATIC_WEBSITE_DIR}" ]; then
-        echo -e "${GREEN}Using pre-built website files${NC}"
-        cp -r "${STATIC_WEBSITE_DIR}"/* "${WEBSITE_DIR}/"
-    else
-        echo -e "${ORANGE}Static website not found, creating website files on the fly...${NC}"
-        # Create website files - index.html would be created here
-    cat > "${WEBSITE_DIR}/index.html" << 'EOL'
-<!DOCTYPE html>
-<html lang="en">
-<!-- ... rest of the existing HTML code ... -->
-</html>
-EOL
-    fi
-    
-    # Add executable permissions to generate_data.sh
+    # Make the script executable
     chmod +x "${WEBSITE_DIR}/generate_data.sh"
     
-    # Check for pre-downloaded icons
-    ICONS_DIR="${SCRIPT_DIR}/icons"
-    if [ -d "${ICONS_DIR}" ]; then
-        echo -e "${GREEN}Using pre-downloaded icons${NC}"
-        mkdir -p "${WEBSITE_DIR}/icons"
-        cp -r "${ICONS_DIR}"/* "${WEBSITE_DIR}/icons/"
-    else
-        echo -e "${ORANGE}Pre-downloaded icons not found, using fallback icons${NC}"
-        # Icons will be handled through the fallbacks in the HTML
-    fi
-    
-    # Generate the data.json file (always needed)
-    echo -e "${GREEN}Generating data.json from iplist config...${NC}"
+    # Generate the data.json file
+    echo -e "${GREEN}Generating service data...${NC}"
     "${WEBSITE_DIR}/generate_data.sh" "${IPLIST_DIR}" "${WEBSITE_DIR}/data.json"
     
     # Create a simple web server using Python or PHP
@@ -1461,7 +1427,7 @@ EOL
         
         # Change to the website directory and start the server
         cd "${WEBSITE_DIR}"
-        python3 -m http.server ${PORT} --bind ${SERVER_IP}
+        python3 -m http.server ${PORT}
     # Check if python2 is available
     elif command -v python &> /dev/null; then
         echo -e "${GREEN}Starting web server using Python 2 at http://${SERVER_IP}:${PORT}${NC}"
@@ -1471,7 +1437,7 @@ EOL
         
         # Change to the website directory and start the server
         cd "${WEBSITE_DIR}"
-        python -m SimpleHTTPServer ${PORT} ${SERVER_IP}
+        python -m SimpleHTTPServer ${PORT}
     # Check if PHP is available
     elif command -v php &> /dev/null; then
         echo -e "${GREEN}Starting web server using PHP at http://${SERVER_IP}:${PORT}${NC}"
@@ -1481,7 +1447,7 @@ EOL
         
         # Change to the website directory and start the server
         cd "${WEBSITE_DIR}"
-        php -S ${SERVER_IP}:${PORT}
+        php -S 0.0.0.0:${PORT}
     else
         echo -e "${RED}Could not start a web server. Please install Python or PHP.${NC}"
         echo -e "${RED}Continuing with default routing (all traffic).${NC}"

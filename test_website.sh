@@ -5,12 +5,24 @@ set -e
 WORKING_DIR=~/amneziawg
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEB_PORT=8000
+REPO_URL="https://github.com/ginto-sakata/amneziawg-install.git"
 
 # Create working directory if it doesn't exist
 mkdir -p "$WORKING_DIR"
 cd "$WORKING_DIR"
 
 echo "Working in directory: $WORKING_DIR"
+
+# 0. Clone the amneziawg-install repository if needed
+if [ -d "amneziawg-install" ]; then
+    echo "Updating amneziawg-install repository..."
+    cd amneziawg-install
+    git pull
+    cd ..
+else
+    echo "Cloning amneziawg-install repository..."
+    git clone "$REPO_URL" amneziawg-install
+fi
 
 # 1. Download or clone iplist/config
 if [ -d "iplist" ]; then
@@ -45,7 +57,23 @@ else
     echo "No pre-downloaded icons found. Running icon downloader..."
     mkdir -p icons
     bash "$SCRIPT_DIR/download_favicons.sh" icons
+    
+    # Copy icons to website directory
     cp -r icons/* website/icons/
+    
+    # Copy icons to the amneziawg-install repo for potential committing
+    echo "Copying icons to amneziawg-install repository..."
+    mkdir -p amneziawg-install/icons
+    cp -r icons/* amneziawg-install/icons/
+    
+    echo ""
+    echo "Icons have been downloaded and copied to amneziawg-install/icons"
+    echo "To commit and push the icons to the repository:"
+    echo "  cd ~/amneziawg/amneziawg-install"
+    echo "  git add icons"
+    echo "  git commit -m 'Add downloaded icons'"
+    echo "  git push origin master"
+    echo ""
 fi
 
 # 4. Generate data.json

@@ -1,39 +1,61 @@
 #!/bin/bash
 
 # Standalone script to download favicons from iplist repository config
-# This script should be run once to generate favicons that will be committed to git
-# Usage: ./download_favicons.sh <path_to_iplist_repo_config> <output_icons_dir>
+# This script automatically clones the iplist repository and downloads favicons
+# Usage: ./download_favicons.sh <output_icons_dir>
 
 # Parameters
-IPLIST_CONFIG="$1"
-ICONS_DIR="$2"
+ICONS_DIR="$1"
+AMNEZIAWG_DIR=~/amneziawg
+IPLIST_DIR="${AMNEZIAWG_DIR}/iplist"
+IPLIST_CONFIG="${IPLIST_DIR}/config"
 
-if [ -z "$IPLIST_CONFIG" ] || [ -z "$ICONS_DIR" ]; then
-    echo "Usage: $0 <path_to_iplist_repo_config> <output_icons_dir>"
-    echo "Example: $0 ./iplist/config ./icons"
+# Check if output directory is provided
+if [ -z "$ICONS_DIR" ]; then
+    echo "Usage: $0 <output_icons_dir>"
+    echo "Example: $0 ./icons"
     echo ""
-    echo "The script will scan all JSON files in the iplist config directory"
-    echo "and download favicons for each website."
+    echo "The script will automatically clone the iplist repository,"
+    echo "scan all JSON files in the config directory and download favicons for each website."
     echo ""
     exit 1
 fi
 
-# Check if iplist config directory exists
-if [ ! -d "$IPLIST_CONFIG" ]; then
-    echo "Error: iplist config directory '$IPLIST_CONFIG' not found."
-    echo "Please clone the repository first with:"
-    echo "git clone https://github.com/rekryt/iplist.git"
-    exit 1
-fi
-
-# Create output directory
-mkdir -p "$ICONS_DIR"
+# Create amneziawg directory if it doesn't exist
+mkdir -p "$AMNEZIAWG_DIR"
 
 # Install dependencies if not available
 if ! command -v curl &> /dev/null; then
     echo "curl is required. Installing..."
     apt-get update && apt-get install -y curl
 fi
+
+if ! command -v git &> /dev/null; then
+    echo "git is required. Installing..."
+    apt-get update && apt-get install -y git
+fi
+
+# Clone or update iplist repository
+if [ -d "$IPLIST_DIR" ]; then
+    echo "Updating existing iplist repository..."
+    cd "$IPLIST_DIR"
+    git pull origin master
+else
+    echo "Cloning iplist repository..."
+    git clone -n --depth=1 --filter=tree:0 https://github.com/rekryt/iplist "$IPLIST_DIR"
+    cd "$IPLIST_DIR"
+    git sparse-checkout set --no-cone "config"
+    git checkout
+fi
+
+# Check if iplist config directory exists after cloning
+if [ ! -d "$IPLIST_CONFIG" ]; then
+    echo "Error: iplist config directory not found after cloning."
+    exit 1
+fi
+
+# Create output directory
+mkdir -p "$ICONS_DIR"
 
 download_favicon() {
     local domain="$1"
@@ -108,8 +130,8 @@ for category_path in "$IPLIST_CONFIG"/*; do
     
     # Process each JSON file in the category
     for json_file in "$category_path"/*.json; do
-        # Skip if not a file
-        if [ ! -f "$json_file" ]; then
+        # Skip if not a file or if no files match the pattern
+        if [ ! -f "$json_file" ] || [ "$json_file" = "$category_path/*.json" ]; then
             continue
         fi
         

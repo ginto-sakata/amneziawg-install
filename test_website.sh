@@ -52,9 +52,13 @@ else
     cd ..
 fi
 
-# 2. Create website directory and copy files
-mkdir -p website
-cp -f index.html website/
+# 2. Generate data
+mkdir -p static_website/config/
+cp -r iplist/config/* iplist/config/.* static_website/config/ "$WORKING_DIR/" 2>/dev/null || true
+cd static_website
+generate_data.sh
+
+
 
 # 3. Serve website for testing
 echo "Starting web server on port $WEB_PORT..."
@@ -63,18 +67,14 @@ echo "Press Ctrl+C to stop the server"
 
 # Use Python's HTTP server if available
 if command -v python3 &>/dev/null; then
-    cd website
     python3 -m http.server $WEB_PORT
 elif command -v python &>/dev/null; then
-    cd website
     python -m SimpleHTTPServer $WEB_PORT
 # Use PHP's built-in server if available
 elif command -v php &>/dev/null; then
-    cd website
     php -S "localhost:$WEB_PORT"
 # Use Node.js http-server if available
 elif command -v npx &>/dev/null; then
-    cd website
     npx http-server -p $WEB_PORT
 else
     echo "Error: No suitable web server found."

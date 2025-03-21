@@ -7,22 +7,35 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEB_PORT=8000
 REPO_URL="https://github.com/ginto-sakata/amneziawg-install.git"
 
-# Create working directory if it doesn't exist
-mkdir -p "$WORKING_DIR"
-cd "$WORKING_DIR"
+# Check if we're already in the right repository directory
+if [ "$SCRIPT_DIR" != "$WORKING_DIR" ]; then
+    # Create working directory if it doesn't exist
+    mkdir -p "$WORKING_DIR"
+    
+    # Clone or update the amneziawg-install repository directly to ~/amneziawg
+    if [ -d "$WORKING_DIR/.git" ]; then
+        echo "Updating amneziawg-install repository in $WORKING_DIR..."
+        cd "$WORKING_DIR"
+        git pull
+    else
+        echo "Cloning amneziawg-install repository to $WORKING_DIR..."
+        # Clone to a temp directory first
+        TEMP_CLONE_DIR=$(mktemp -d)
+        git clone "$REPO_URL" "$TEMP_CLONE_DIR"
+        
+        # Move all contents to WORKING_DIR
+        cp -r "$TEMP_CLONE_DIR/"* "$TEMP_CLONE_DIR/".* "$WORKING_DIR/" 2>/dev/null || true
+        rm -rf "$TEMP_CLONE_DIR"
+        
+        cd "$WORKING_DIR"
+    fi
+else
+    # We're already in the repository
+    echo "Already in amneziawg-install repository directory: $WORKING_DIR"
+    cd "$WORKING_DIR"
+fi
 
 echo "Working in directory: $WORKING_DIR"
-
-# 0. Clone the amneziawg-install repository if needed
-if [ -d "amneziawg-install" ]; then
-    echo "Updating amneziawg-install repository..."
-    cd amneziawg-install
-    git pull
-    cd ..
-else
-    echo "Cloning amneziawg-install repository..."
-    git clone "$REPO_URL" amneziawg-install
-fi
 
 # 1. Download or clone iplist/config
 if [ -d "iplist" ]; then
@@ -35,11 +48,11 @@ else
     git clone https://github.com/iplist/iplist.git
 fi
 
-# 2. Copy static website files
+# 2. Create website directory and copy files
 mkdir -p website
-if [ -d "$SCRIPT_DIR/static_website" ]; then
+if [ -d "static_website" ]; then
     echo "Copying static website files..."
-    cp -r "$SCRIPT_DIR/static_website/"* website/
+    cp -r static_website/* website/
 else
     echo "Error: Static website files not found!"
     exit 1
@@ -50,26 +63,21 @@ chmod +x website/generate_data.sh 2>/dev/null || true
 
 # 3. Handle icons
 mkdir -p website/icons
-if [ -d "$SCRIPT_DIR/icons" ]; then
+if [ -d "icons" ]; then
     echo "Copying pre-downloaded icons..."
-    cp -r "$SCRIPT_DIR/icons/"* website/icons/
+    cp -r icons/* website/icons/
 else
     echo "No pre-downloaded icons found. Running icon downloader..."
     mkdir -p icons
-    bash "$SCRIPT_DIR/download_favicons.sh" icons
+    bash "$WORKING_DIR/download_favicons.sh" icons
     
     # Copy icons to website directory
     cp -r icons/* website/icons/
     
-    # Copy icons to the amneziawg-install repo for potential committing
-    echo "Copying icons to amneziawg-install repository..."
-    mkdir -p amneziawg-install/icons
-    cp -r icons/* amneziawg-install/icons/
-    
     echo ""
-    echo "Icons have been downloaded and copied to amneziawg-install/icons"
+    echo "Icons have been downloaded and saved to $WORKING_DIR/icons"
     echo "To commit and push the icons to the repository:"
-    echo "  cd ~/amneziawg/amneziawg-install"
+    echo "  cd $WORKING_DIR"
     echo "  git add icons"
     echo "  git commit -m 'Add downloaded icons'"
     echo "  git push origin master"

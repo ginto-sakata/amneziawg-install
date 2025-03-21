@@ -71,6 +71,7 @@ echo -e "${GREEN}Please open this URL in your browser.${NC}"
 echo -e "${GREEN}After selecting services, click 'Generate IP List' and copy the result.${NC}"
 echo -e "${ORANGE}Press Ctrl+C when done to continue with the installation.${NC}"
 
+cd cd static_website
 # Use Python's HTTP server if available
 if command -v python3 &>/dev/null; then
     python3 -m http.server $WEB_PORT

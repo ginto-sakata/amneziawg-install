@@ -55,7 +55,7 @@ fi
 # 2. Generate data
 cp -r ./iplist/config/ ./static_website/config/ 2>/dev/null || true
 cd static_website
-./generate_data.sh ./config/ data.json
+../generate_data.sh ./config/ data.json
 
 
 

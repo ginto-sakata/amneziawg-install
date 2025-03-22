@@ -321,14 +321,15 @@
                         throw new Error(`Failed to load CIDRs: ${cidrsResponse.status}`);
                     }
                     
-                    const categories = await categoriesResponse.json();
+                    const categoriesData = await categoriesResponse.json();
                     const services = await servicesResponse.json();
                     descriptions = await descriptionsResponse.json();
                     const cidrs = await cidrsResponse.json();
                     
                     // Combine all data
                     return {
-                        categories: categories.categories,
+                        categories: categoriesData.categories,
+                        order: categoriesData.order,
                         services: services,
                         descriptions: descriptions,
                         cidrs: cidrs.services
@@ -344,61 +345,24 @@
             
             // Function to format service ID into display name
             function formatDisplayName(serviceId, services) {
-                return services[serviceId] || serviceId
-                    .replace(/\.(com|org|net|io|ai|tv|ru|eu|ag|fm|club|live|pro|online|info)$/i, '')
-                    .replace(/\./g, ' ')
-                    .replace(/\b\w/g, l => l.toUpperCase())
-                    .replace(/\s+/g, ' ')
-                    .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2')
-                    .replace(/([a-z])([A-Z])/g, '$1 $2')
-                    .replace(/([A-Z])([A-Z])([a-z])/g, '$1 $2 $3')
-                    .replace(/\s+/g, ' ')
-                    .trim();
+                return services[serviceId] || serviceId;
             }
             
             // Function to render all categories and services
             async function renderCategoriesAndServices() {
                 try {
-                    const { categories, services, descriptions, cidrs } = await loadServiceData();
-                    
-                    // Priority services to show first
-                    const priorityServices = [
-                        'youtube.com', 'discord.com', 'telegram.org', 'netflix.com', 'spotify.com',
-                        'chatgpt.com', 'claude.ai', 'x.com', 'instagram.com', 'facebook.com',
-                        'whatsapp.com', 'signal.org', 'bbc.com', 'dw.com', 'hrw.org',
-                        'ovd.info', 'thevillage.ru', 'moscowtimes.ru', 'novayagazeta.ru',
-                        'anilibria.tv', 'nyaa.si', 'nyaa.land',
-                        'danbooru.donmai.us', 'gelbooru.com',
-                        'pornhub.com', 'xhamster.com', 'xhamsterlive.com', 'xnxx.ru.com', 'xvideos.com',
-                        '10minutemail.com', 'connect.garmin.com', 'jetbrains.com', 'jetbrains@cdn',
-                        'jetbrains@grazie.ai', 'linktr.ee', 'trainingpeaks.com',
-                        '1337x.to', 'thepiratebay.org', 'rutracker.org', 'rutor.info', 'nnmclub.to',
-                        'ralphlauren.eu'
-                    ];
-                    
-                    // Sort categories according to priority
-                    const sortedCategories = Object.keys(categories).sort((a, b) => {
-                        const indexA = categoryPriority.indexOf(a);
-                        const indexB = categoryPriority.indexOf(b);
-                        
-                        if (indexA !== -1 && indexB !== -1) {
-                            return indexA - indexB;
-                        } else if (indexA !== -1) {
-                            return -1;
-                        } else if (indexB !== -1) {
-                            return 1;
-                        } else {
-                            return a.localeCompare(b);
-                        }
-                    });
+                    const { categories, order, services, descriptions, cidrs } = await loadServiceData();
                     
                     // Clear existing content
                     categoriesContainer.innerHTML = '';
                     
+                    // Use the order from categories.json
+                    const sortedCategories = order;
+                    
                     // Render each category
                     for (const category of sortedCategories) {
                         const categoryData = categories[category];
-                        const formattedCategoryName = categoryData.name || category.charAt(0).toUpperCase() + category.slice(1);
+                        const formattedCategoryName = categoryData.name;
                         
                         // Create category container
                         const categoryDiv = document.createElement('div');
@@ -451,28 +415,19 @@
                         servicesData[formattedCategoryName] = { services: {} };
                         
                         // Get and sort services
-                        let serviceEntries = categoryData.services.map(serviceId => [serviceId, cidrs[serviceId]]);
+                        let serviceEntries = categoryData.services
+                            .filter(serviceId => cidrs[serviceId])
+                            .map(serviceId => [serviceId, cidrs[serviceId]]);
                         
-                        // Sort services: priority services first, then alphabetically
+                        // Sort services alphabetically by display name
                         serviceEntries.sort((a, b) => {
-                            const indexA = priorityServices.indexOf(a[0]);
-                            const indexB = priorityServices.indexOf(b[0]);
-                            
-                            if (indexA !== -1 && indexB !== -1) {
-                                return indexA - indexB;
-                            } else if (indexA !== -1) {
-                                return -1;
-                            } else if (indexB !== -1) {
-                                return 1;
-                            } else {
-                                return a[0].localeCompare(b[0]);
-                            }
+                            const nameA = services[a[0]] || a[0];
+                            const nameB = services[b[0]] || b[0];
+                            return nameA.localeCompare(nameB);
                         });
                         
                         // Process services in the category
                         for (const [serviceId, serviceData] of serviceEntries) {
-                            if (!serviceData) continue; // Skip if no CIDRs found
-                            
                             // Create service container
                             const serviceDiv = document.createElement('li');
                             serviceDiv.className = 'service';

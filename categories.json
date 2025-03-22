@@ -150,16 +150,6 @@
                 "vndb.org"
             ]
         },
-        "education": {
-            "name": "Education",
-            "services": [
-                "duolingo.com",
-                "refactoring.guru",
-                "znanija.com",
-                "mrakopedia.net",
-                "naukri.com"
-            ]
-        },
         "tools": {
             "name": "Tools & Utilities",
             "services": [
@@ -213,17 +203,18 @@
                 "kinozal.me"
             ]
         },
-        "shop": {
-            "name": "Shopping",
+        "misc": {
+            "name": "Miscellaneous",
             "services": [
-                "ralphlauren.eu"
-            ]
-        },
-        "casino": {
-            "name": "Casino",
-            "services": [
+                "ralphlauren.eu",
                 "vavada.com",
-                "7k.casino"
+                "7k.casino",
+                "combotech",
+                "refactoring.guru",
+                "znanija.com",
+                "mrakopedia.net",
+                "naukri.com",
+                "aliexpress.com"
             ]
         }
     },
@@ -235,11 +226,9 @@
         "ai",
         "entertainment",
         "anime",
-        "education",
         "tools",
         "adult",
         "torrent",
-        "shop",
-        "casino"
+        "misc"
     ]
 } 

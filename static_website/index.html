@@ -106,8 +106,8 @@
             background-color: #f5f5f5;
         }
         .service-icon {
-            width: 16px;
-            height: 16px;
+            width: 32px;
+            height: 32px;
             margin-right: 8px;
             object-fit: contain;
             vertical-align: middle;
@@ -206,6 +206,14 @@
             text-align: center;
             margin: 20px 0;
         }
+        /* Special handling for news category */
+        .category[data-category="news"] .services-list {
+            column-count: 2;
+            column-gap: 20px;
+        }
+        .category[data-category="news"] .service-item {
+            break-inside: avoid;
+        }
     </style>
 </head>
 <body>
@@ -214,11 +222,6 @@
         
         <div class="search-container">
             <input type="text" id="search-input" class="search-input" placeholder="Search for websites...">
-        </div>
-        
-        <div class="global-actions">
-            <button id="select-all-btn" class="global-button">Select All</button>
-            <button id="deselect-all-btn" class="global-button">Deselect All</button>
         </div>
         
         <div id="loader" class="loader"></div>
@@ -230,6 +233,11 @@
         
         <div class="actions">
             <button id="generate-and-copy-btn" class="generate-button">Generate IP List & Copy to Clipboard</button>
+        </div>
+        
+        <div class="global-actions">
+            <button id="select-all-btn" class="global-button">Select All</button>
+            <button id="deselect-all-btn" class="global-button">Deselect All</button>
         </div>
         
         <div id="output-container" class="output-container">
@@ -371,6 +379,7 @@
                         // Create category container
                         const categoryDiv = document.createElement('div');
                         categoryDiv.className = 'category';
+                        categoryDiv.dataset.category = formattedCategoryName;
                         
                         // Create category header
                         const categoryHeader = document.createElement('div');

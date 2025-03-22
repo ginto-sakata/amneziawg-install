@@ -396,34 +396,40 @@
                         // Set icon based on category
                         switch(formattedCategoryName.toLowerCase()) {
                             case 'streaming':
-                                icon.src = 'https://cdn.betterttv.net/emote/5f1b0186cf6d2144653d2970/2x'; // catJAM
-                                break;
-                            case 'gaming':
-                                icon.src = 'https://cdn.betterttv.net/emote/5b77ac3af7bddc567b1d5fb2/2x'; // pepeJAM
+                                icon.src = 'https://www.google.com/s2/favicons?domain=youtube.com&sz=128'; // YouTube icon
                                 break;
                             case 'communication':
-                                icon.src = 'https://cdn.betterttv.net/emote/5e76d338d6581c3724c0f0b2/2x'; // modCheck
+                                icon.src = 'https://www.google.com/s2/favicons?domain=discord.com&sz=128'; // Discord icon
+                                break;
+                            case 'gaming':
+                                icon.src = 'https://cdn.frankerfacez.com/emoticon/243789/2'; // Pepega
                                 break;
                             case 'development':
-                                icon.src = 'https://cdn.betterttv.net/emote/5d82600ec0652668c9e4e2f2/2x'; // 5Head
+                                icon.src = 'https://cdn.frankerfacez.com/emoticon/489726/2'; // Looking
                                 break;
                             case 'social':
-                                icon.src = 'https://cdn.betterttv.net/emote/5c548025009a2e73916b3a37/2x'; // PogU
+                                icon.src = 'https://cdn.frankerfacez.com/emoticon/381875/2'; // KEKW
                                 break;
                             case 'anime':
-                                icon.src = 'https://cdn.betterttv.net/emote/58493b7c65dbbdab32e1d14d/2x'; // AYAYA
+                                icon.src = 'https://cdn.frankerfacez.com/emoticon/162146/2'; // AYAYA
                                 break;
                             case 'news':
-                                icon.src = 'https://cdn.betterttv.net/emote/5ff827395ef7d10c7912c106/2x'; // monkaHmm
+                                icon.src = 'https://cdn.frankerfacez.com/emoticon/214681/2'; // monkaW
+                                break;
+                            case 'media':
+                                icon.src = 'https://cdn.frankerfacez.com/emoticon/210748/2'; // POG
+                                break;
+                            case 'ai tools':
+                                icon.src = 'https://cdn.frankerfacez.com/emoticon/720568/animated/2'; // modcheck
                                 break;
                             default:
-                                icon.src = 'https://cdn.betterttv.net/emote/5b490e73cf46791f8491f6f4/2x'; // HACKERMANS
+                                icon.src = 'https://cdn.frankerfacez.com/emoticon/130762/2'; // monkaS as fallback
                         }
                         
                         // Add error handling for emote loading
                         icon.onerror = function() {
-                            // Fallback to default icon if emote fails to load
-                            this.src = 'https://cdn.betterttv.net/emote/5b490e73cf46791f8491f6f4/2x'; // HACKERMANS as fallback
+                            // Fallback to monkaS if emote fails to load
+                            this.src = 'https://cdn.frankerfacez.com/emoticon/130762/2';
                         };
                         
                         const titleContainer = document.createElement('div');

@@ -27,12 +27,12 @@ fi
 # 2. Generate data
 echo "Generating data from iplist repository..."
 chmod +x generate_data.sh
-./generate_data.sh ./iplist/config ./static_website/data.json ./descriptions.json
+./generate_data.sh ./iplist/config ./static_website/data.json ./descriptions.json ./services.json ./categories.json
 
 # 3. Transform data for better organization
 echo "Transforming data for website display..."
 chmod +x transform_data.sh
-./transform_data.sh
+./transform_data.sh ./static_website/data.json ./static_website/data.json.transformed
 
 # 4. Update index.html with full-width layout
 echo "Updating website layout with CTRL+hover feature..."

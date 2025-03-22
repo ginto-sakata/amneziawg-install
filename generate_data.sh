@@ -4,11 +4,39 @@
 CONFIG_DIR="${1:-./iplist/config}"
 OUTPUT_FILE="${2:-./static_website/data.json}"
 DESCRIPTIONS_FILE="${3:-./descriptions.json}"
+SERVICES_FILE="${4:-./services.json}"
+CATEGORIES_FILE="${5:-./categories.json}"
 
 echo "Generating data from $CONFIG_DIR to $OUTPUT_FILE..."
 
 # Ensure output directory exists
 mkdir -p $(dirname "$OUTPUT_FILE")
+
+# Check if required files exist
+if [ ! -f "$DESCRIPTIONS_FILE" ]; then
+    echo "Error: descriptions.json not found"
+    exit 1
+fi
+
+if [ ! -f "$SERVICES_FILE" ]; then
+    echo "Error: services.json not found"
+    exit 1
+fi
+
+if [ ! -f "$CATEGORIES_FILE" ]; then
+    echo "Error: categories.json not found"
+    exit 1
+fi
+
+# Check if jq is available
+if command -v jq &> /dev/null; then
+    echo "Using jq for JSON processing"
+    HAS_JQ=1
+else
+    echo "Error: jq is required for this script"
+    echo "Install jq: apt-get install jq"
+    exit 1
+fi
 
 # Create initial JSON structure
 cat > "$OUTPUT_FILE" << EOF
@@ -18,117 +46,34 @@ cat > "$OUTPUT_FILE" << EOF
 }
 EOF
 
-# Check if jq is available
-if command -v jq &> /dev/null; then
-    echo "Using jq for JSON processing"
-    HAS_JQ=1
-else
-    echo "Warning: jq not found, will use basic text processing (less reliable)"
-    echo "Install jq for better results: apt-get install jq"
-    HAS_JQ=0
-fi
-
-# Load descriptions
-if [ -f "$DESCRIPTIONS_FILE" ]; then
-    echo "Loading descriptions from $DESCRIPTIONS_FILE"
-    DESCRIPTIONS=$(cat "$DESCRIPTIONS_FILE")
-else
-    echo "Warning: descriptions.json not found"
-    DESCRIPTIONS="{}"
-fi
-
-# Process each category directory
-find "$CONFIG_DIR" -mindepth 1 -maxdepth 1 -type d | while read -r category_path; do
-    category=$(basename "$category_path")
+# Process each category from categories.json
+jq -r '.categories | to_entries[] | .key as $cat | .value.services[] | [$cat, .]' "$CATEGORIES_FILE" | while read -r category service_id; do
+    # Find the service file in the config directory
+    service_file=$(find "$CONFIG_DIR" -name "${service_id}.json" -type f)
     
-    # Skip hidden directories
-    if [[ "$category" == .* ]]; then
-        continue
-    fi
-    
-    echo "Processing category: $category"
-    
-    # Add category to JSON
-    if [ "$HAS_JQ" -eq 1 ]; then
-        # Add the category using jq
-        jq --arg cat "$category" '.categories[$cat] = {"services": {}}' "$OUTPUT_FILE" > "$OUTPUT_FILE.tmp"
-        mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
-    else
-        # Add category using sed (less reliable)
-        sed -i "s/\"categories\": {/\"categories\": {\"$category\": {\"services\": {}},/g" "$OUTPUT_FILE"
-    fi
-    
-    # Process each service file
-    find "$category_path" -name "*.json" | while read -r service_file; do
-        service_name=$(basename "$service_file" .json)
+    if [ -n "$service_file" ]; then
+        echo "Processing service: $service_id in category: $category"
         
-        # Skip hidden files
-        if [[ "$service_name" == .* ]]; then
+        # Extract CIDRs from service file
+        cidrs=$(jq -c '.cidr4 // []' "$service_file")
+        
+        # Skip if no CIDRs
+        if [ "$cidrs" = "[]" ] || [ -z "$cidrs" ]; then
+            echo "  No CIDRs found, skipping"
             continue
         fi
         
-        echo "  Processing service: $service_name"
-        
-        # Extract data from service file
-        if [ "$HAS_JQ" -eq 1 ]; then
-            # Extract using jq
-            cidrs=$(jq -c '.cidr4 // []' "$service_file")
-            
-            # Use service name as the main domain
-            domain="$service_name"
-            
-            # Get description from descriptions.json
-            description=$(echo "$DESCRIPTIONS" | jq -r --arg domain "$domain" '.[$domain] // "Access website and services"')
-            
-            # Skip if no CIDRs (checking if cidrs is empty array or empty string)
-            if [ "$cidrs" = "[]" ] || [ -z "$cidrs" ]; then
-                echo "    No CIDRs found, skipping"
-                continue
-            fi
-            
-            # Add service to JSON
-            jq --arg cat "$category" \
-               --arg name "$service_name" \
-               --arg url "https://$domain" \
-               --arg desc "$description" \
-               --argjson cidrs "$cidrs" \
-               '.categories[$cat].services[$name] = {"url": $url, "description": $desc, "cidrs": $cidrs}' \
-               "$OUTPUT_FILE" > "$OUTPUT_FILE.tmp"
-            mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
-        else
-            # Extract using grep/sed (less reliable)
-            cidrs=$(grep -o '"cidr4":\s*\[[^]]*\]' "$service_file" | sed 's/"cidr4":\s*\[\(.*\)\]/\1/')
-            
-            # Use service name as the main domain
-            domain="$service_name"
-            
-            # Skip if no CIDRs (checking if cidrs is empty array or empty string)
-            if [ "$cidrs" = "[]" ] || [ -z "$cidrs" ]; then
-                echo "    No CIDRs found, skipping"
-                continue
-            fi
-            
-            # Get description from descriptions.json
-            description=$(echo "$DESCRIPTIONS" | grep -o "\"$domain\":\s*\"[^\"]*\"" | sed "s/\"$domain\":\s*\"\([^\"]*\)\"/\1/")
-            if [ -z "$description" ]; then
-                description="Access website and services"
-            fi
-            
-            # Add service to JSON
-            service_json="{\"url\":\"https://$domain\",\"description\":\"$description\",\"cidrs\":$cidrs}"
-            sed -i "s/\"services\": {}/\"services\": {\"$service_name\": $service_json}/g" "$OUTPUT_FILE"
-        fi
-    done
+        # Add service to JSON
+        jq --arg cat "$category" \
+           --arg id "$service_id" \
+           --arg url "https://$service_id" \
+           --argjson cidrs "$cidrs" \
+           '.categories[$cat].services[$id] = {"url": $url, "cidrs": $cidrs}' \
+           "$OUTPUT_FILE" > "$OUTPUT_FILE.tmp"
+        mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
+    else
+        echo "Warning: Service file not found for $service_id"
+    fi
 done
-
-# Fix trailing commas (if any)
-sed -i 's/,}/}/g' "$OUTPUT_FILE"
-sed -i 's/},}/}}/g' "$OUTPUT_FILE"
-
-# Fix the JSON if using sed method
-if [ "$HAS_JQ" -eq 0 ]; then
-    # Remove the trailing comma after the last category
-    sed -i 's/,\s*}/}/g' "$OUTPUT_FILE"
-fi
 
 echo "Data generation complete. File saved to: $OUTPUT_FILE"

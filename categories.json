@@ -1,0 +1,139 @@
+{
+    "categories": {
+        "video": {
+            "name": "Video Streaming",
+            "services": [
+                "youtube.com",
+                "netflix.com",
+                "spotify.com",
+                "crunchyroll.com",
+                "pixiv.net"
+            ]
+        },
+        "messengers": {
+            "name": "Messengers",
+            "services": [
+                "discord.com",
+                "discord.gg",
+                "discord.media",
+                "telegram.org",
+                "whatsapp.com",
+                "messenger.com",
+                "viber.com",
+                "signal.org"
+            ]
+        },
+        "social": {
+            "name": "Social Media",
+            "services": [
+                "x.com",
+                "instagram.com",
+                "facebook.com",
+                "linkedin.com",
+                "tiktok.com",
+                "quora.com",
+                "soundcloud.com",
+                "medium.com",
+                "patreon.com"
+            ]
+        },
+        "news": {
+            "name": "News & Media",
+            "services": [
+                "bbc.com",
+                "dw.com",
+                "hrw.org",
+                "ovd.info",
+                "thevillage.ru",
+                "moscowtimes.ru",
+                "novayagazeta.ru"
+            ]
+        },
+        "ai": {
+            "name": "AI Tools",
+            "services": [
+                "chatgpt.com",
+                "claude.ai",
+                "grammarly.com",
+                "jetbrains@grazie.ai"
+            ]
+        },
+        "entertainment": {
+            "name": "Entertainment",
+            "services": [
+                "chess.com",
+                "duolingo.com",
+                "notion.so",
+                "miro.com",
+                "zapier.com"
+            ]
+        },
+        "anime": {
+            "name": "Anime & Manga",
+            "services": [
+                "anilibria.tv",
+                "nyaa.si",
+                "nyaa.land",
+                "danbooru.donmai.us",
+                "gelbooru.com"
+            ]
+        },
+        "education": {
+            "name": "Education",
+            "services": [
+                "duolingo.com"
+            ]
+        },
+        "tools": {
+            "name": "Tools & Utilities",
+            "services": [
+                "10minutemail.com",
+                "connect.garmin.com",
+                "jetbrains.com",
+                "jetbrains@cdn",
+                "linktr.ee",
+                "trainingpeaks.com"
+            ]
+        },
+        "adult": {
+            "name": "Adult Content",
+            "services": [
+                "pornhub.com",
+                "xhamster.com",
+                "xhamsterlive.com",
+                "xnxx.ru.com",
+                "xvideos.com"
+            ]
+        },
+        "torrent": {
+            "name": "Torrent Sites",
+            "services": [
+                "1337x.to",
+                "thepiratebay.org",
+                "rutracker.org",
+                "rutor.info",
+                "nnmclub.to"
+            ]
+        },
+        "shop": {
+            "name": "Shopping",
+            "services": [
+                "ralphlauren.eu"
+            ]
+        }
+    },
+    "order": [
+        "video",
+        "messengers",
+        "social",
+        "news",
+        "ai",
+        "entertainment",
+        "anime",
+        "education",
+        "tools",
+        "adult",
+        "torrent",
+        "shop"
+    ]
+} 

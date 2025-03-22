@@ -396,23 +396,35 @@
                         // Set icon based on category
                         switch(formattedCategoryName.toLowerCase()) {
                             case 'streaming':
-                                icon.src = 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png';
+                                icon.src = 'https://cdn.betterttv.net/emote/5f1b0186cf6d2144653d2970/2x'; // catJAM
                                 break;
                             case 'gaming':
-                                icon.src = 'https://cdn-icons-png.flaticon.com/512/686/686589.png';
+                                icon.src = 'https://cdn.betterttv.net/emote/5b77ac3af7bddc567b1d5fb2/2x'; // pepeJAM
                                 break;
                             case 'communication':
-                                icon.src = 'https://cdn-icons-png.flaticon.com/512/134/134914.png';
+                                icon.src = 'https://cdn.betterttv.net/emote/5e76d338d6581c3724c0f0b2/2x'; // modCheck
                                 break;
                             case 'development':
-                                icon.src = 'https://cdn-icons-png.flaticon.com/512/1005/1005141.png';
+                                icon.src = 'https://cdn.betterttv.net/emote/5d82600ec0652668c9e4e2f2/2x'; // 5Head
                                 break;
                             case 'social':
-                                icon.src = 'https://cdn-icons-png.flaticon.com/512/1384/1384014.png';
+                                icon.src = 'https://cdn.betterttv.net/emote/5c548025009a2e73916b3a37/2x'; // PogU
+                                break;
+                            case 'anime':
+                                icon.src = 'https://cdn.betterttv.net/emote/58493b7c65dbbdab32e1d14d/2x'; // AYAYA
+                                break;
+                            case 'news':
+                                icon.src = 'https://cdn.betterttv.net/emote/5ff827395ef7d10c7912c106/2x'; // monkaHmm
                                 break;
                             default:
-                                icon.src = 'https://cdn-icons-png.flaticon.com/512/1828/1828791.png';
+                                icon.src = 'https://cdn.betterttv.net/emote/5b490e73cf46791f8491f6f4/2x'; // HACKERMANS
                         }
+                        
+                        // Add error handling for emote loading
+                        icon.onerror = function() {
+                            // Fallback to default icon if emote fails to load
+                            this.src = 'https://cdn.betterttv.net/emote/5b490e73cf46791f8491f6f4/2x'; // HACKERMANS as fallback
+                        };
                         
                         const titleContainer = document.createElement('div');
                         titleContainer.className = 'flex items-center';

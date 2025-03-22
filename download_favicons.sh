@@ -1,26 +1,20 @@
 #!/bin/bash
 
-# Standalone script to download favicons from iplist repository config
-# This script automatically clones the iplist repository and downloads favicons
+# Script to download favicons from iplist repository config
 # Usage: ./download_favicons.sh <output_icons_dir>
 
 # Parameters
-DEFAULT_ICONS_DIR="./icons"
+DEFAULT_ICONS_DIR="./static_website/icons"
 ICONS_DIR="${1:-$DEFAULT_ICONS_DIR}"
-AMNEZIAWG_DIR=~/amneziawg
-IPLIST_DIR="${AMNEZIAWG_DIR}/iplist"
-IPLIST_CONFIG="${IPLIST_DIR}/config"
+IPLIST_CONFIG="./static_website/config"
 
 # Check if output directory is provided
-if [ -z "$ICONS_DIR" ]; then
+if [ -z "$1" ]; then
     echo "Using default output directory: $DEFAULT_ICONS_DIR"
     ICONS_DIR="$DEFAULT_ICONS_DIR"
 fi
 
 echo "Icons will be saved to: $(realpath "$ICONS_DIR")"
-
-# Create amneziawg directory if it doesn't exist
-mkdir -p "$AMNEZIAWG_DIR"
 
 # Install dependencies if not available
 if ! command -v curl &> /dev/null; then
@@ -28,34 +22,30 @@ if ! command -v curl &> /dev/null; then
     apt-get update && apt-get install -y curl
 fi
 
-if ! command -v git &> /dev/null; then
-    echo "git is required. Installing..."
-    apt-get update && apt-get install -y git
-fi
-
-# Clone or update iplist repository
-if [ -d "$IPLIST_DIR" ]; then
-    echo "Updating existing iplist repository..."
-    cd "$IPLIST_DIR"
-    git pull origin master
-else
-    echo "Cloning iplist repository..."
-    git clone -n --depth=1 --filter=tree:0 https://github.com/rekryt/iplist "$IPLIST_DIR"
-    cd "$IPLIST_DIR"
-    git sparse-checkout set --no-cone "config"
-    git checkout
-fi
-
-# Check if iplist config directory exists after cloning
-if [ ! -d "$IPLIST_CONFIG" ]; then
-    echo "Error: iplist config directory not found after cloning."
-    exit 1
-fi
-
-# Create output directory (using absolute path based on script location)
+# Create output directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ABSOLUTE_ICONS_DIR="$(realpath "${SCRIPT_DIR}/${ICONS_DIR}")"
 mkdir -p "$ABSOLUTE_ICONS_DIR"
+
+# Check if jq is available for better JSON parsing
+if ! command -v jq &> /dev/null; then
+    echo "jq is not installed. Will use basic grep for JSON parsing."
+    USE_JQ=0
+else
+    USE_JQ=1
+fi
+
+extract_domain() {
+    local json_file="$1"
+    
+    if [ "$USE_JQ" -eq 1 ]; then
+        jq -r '.domains[0]' "$json_file" 2>/dev/null
+    else
+        grep -o '"domains": \[[^]]*\]' "$json_file" | 
+            sed 's/"domains": \[\([^,]*\).*/\1/' | 
+            tr -d ' "'
+    fi
+}
 
 download_favicon() {
     local domain="$1"
@@ -93,12 +83,21 @@ download_favicon() {
         fi
     done
     
+    # Try Google's favicon service as fallback
+    local google_favicon_url="https://www.google.com/s2/favicons?domain=${domain}&sz=64"
+    local filename="${output_dir}/${category}/${service_name}.png"
+    
+    echo "Trying Google favicon service: $google_favicon_url"
+    if curl -s -o "$filename" -L "$google_favicon_url" && [ -s "$filename" ]; then
+        echo "✓ Downloaded favicon for $domain from Google favicon service"
+        return 0
+    fi
+    
     # If we reach here, we failed to download a favicon
     echo "✗ Failed to download favicon for $domain"
     
     # Create a fallback colored box with first letter
     local first_letter=$(echo "$domain" | head -c 1 | tr '[:lower:]' '[:upper:]')
-    local hash=$(echo -n "$domain" | md5sum | head -c 6)
     
     # Use a default placeholder image
     echo "Using placeholder image for $domain"
@@ -127,6 +126,7 @@ for category_path in "$IPLIST_CONFIG"/*; do
     fi
     
     echo "Processing category: $category"
+    mkdir -p "$ABSOLUTE_ICONS_DIR/$category"
     
     # Process each JSON file in the category
     for json_file in "$category_path"/*.json; do
@@ -135,16 +135,24 @@ for category_path in "$IPLIST_CONFIG"/*; do
             continue
         fi
         
-        # Get domain name from filename
-        domain=$(basename "$json_file" .json)
+        # Get service name from filename
+        service_name=$(basename "$json_file" .json)
         
         # Skip if hidden file
-        if [[ "$domain" == .* ]]; then
+        if [[ "$service_name" == .* ]]; then
             continue
         fi
         
-        # Extract service name (same as domain in this case)
-        service_name="$domain"
+        # Extract domain from JSON file
+        domain=$(extract_domain "$json_file")
+        
+        # If extraction failed, use service name as domain
+        if [ -z "$domain" ] || [ "$domain" == "null" ]; then
+            domain="$service_name"
+        fi
+        
+        # Create a more readable service name for display
+        display_name=$(echo "$service_name" | sed -E 's/\./-/g' | sed -E 's/(^|-)([a-z])/\U\2/g')
         
         # Download favicon for this domain
         download_favicon "$domain" "$category" "$ABSOLUTE_ICONS_DIR" "$service_name"
@@ -153,7 +161,10 @@ done
 
 echo "---------------------------------------------"
 echo "Favicon download complete. Results saved to $ABSOLUTE_ICONS_DIR"
-echo "Add these favicons to git with: git add $ICONS_DIR"
+
+# Update index.html to use local favicons
+echo "Updating index.html to use local favicons..."
+sed -i 's|https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64|icons/${category}/${serviceName.toLowerCase().replace(/ /g, ".")}.png|g' static_website/index.html
 
 # Create a .gitkeep file in each category directory
 # This ensures that empty directories are still tracked by git

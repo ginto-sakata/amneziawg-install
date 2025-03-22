@@ -228,38 +228,44 @@
             const notification = document.getElementById('notification');
             const searchInput = document.getElementById('search-input');
             
-            // Function to load service data from JSON files
+            // Function to load service data from JSON file
             async function loadServiceData() {
                 loader.style.display = 'block';
                 categoriesContainer.innerHTML = '';
                 
                 try {
-                    // Fetch the directory structure
-                    const response = await fetch('iplist/config/');
+                    // Fetch the data.json file
+                    const response = await fetch('data.json');
+                    if (!response.ok) {
+                        throw new Error(`Failed to load data.json: ${response.status} ${response.statusText}`);
+                    }
                     
-                    // For demo purposes, we'll populate with predefined categories
-                    // In a real implementation, this would dynamically read from the directory
-                    const categories = [
-                        "anime", "art", "casino", "discord", "education", "games", 
-                        "jetbrains", "messengers", "music", "news", "porn", "shop", 
-                        "socials", "tools", "torrent", "video", "youtube"
-                    ];
+                    const data = await response.json();
+                    
+                    if (!data.categories || Object.keys(data.categories).length === 0) {
+                        throw new Error('No categories found in data.json');
+                    }
                     
                     // Process each category
-                    for (const category of categories) {
-                        await loadCategory(category);
+                    for (const [categoryName, categoryData] of Object.entries(data.categories)) {
+                        if (!categoryData.services || Object.keys(categoryData.services).length === 0) {
+                            console.warn(`No services found for category ${categoryName}`);
+                            continue;
+                        }
+                        
+                        await createCategoryElement(categoryName, categoryData);
                     }
                     
                 } catch (error) {
                     console.error('Error loading data:', error);
-                    categoriesContainer.innerHTML = '<div>Error loading services. Please try again.</div>';
+                    categoriesContainer.innerHTML = `<div>Error loading services: ${error.message}. Please try again.</div>`;
                 } finally {
                     loader.style.display = 'none';
                 }
             }
             
-            // Function to load a category and its services
-            async function loadCategory(categoryName) {
+            // Function to create a category element and its services
+            async function createCategoryElement(categoryName, categoryData) {
                 // Create category container
                 const categoryDiv = document.createElement('div');
                 categoryDiv.className = 'category';
@@ -295,82 +301,19 @@
                 const servicesGrid = document.createElement('div');
                 servicesGrid.className = 'services-grid';
                 
-                // Fetch services for this category
-                try {
-                    const categoryServices = await getServicesForCategory(categoryName);
-                    servicesData[formattedCategoryName] = { services: {} };
-                    
-                    for (const [serviceName, serviceData] of Object.entries(categoryServices)) {
-                        servicesData[formattedCategoryName].services[serviceName] = serviceData;
-                        
-                        const serviceDiv = createServiceElement(formattedCategoryName, serviceName, serviceData);
-                        servicesGrid.appendChild(serviceDiv);
-                    }
-                    
-                    categoryDiv.appendChild(servicesGrid);
-                    categoriesContainer.appendChild(categoryDiv);
-                } catch (error) {
-                    console.error(`Error loading services for ${categoryName}:`, error);
-                }
-            }
-            
-            // Function to get services for a category
-            async function getServicesForCategory(category) {
-                // In a real implementation, this would fetch from the server
-                // For demo, we'll simulate some services
+                // Save category services in our data structure
+                servicesData[formattedCategoryName] = { services: {} };
                 
-                // Common services by category (just a few examples for each)
-                const servicesByCategory = {
-                    "anime": ["crunchyroll.com", "animejoy.ru", "animeigo.com", "funimation.com"],
-                    "art": ["artstation.com", "deviantart.com", "behance.net"],
-                    "casino": ["bet365.com", "pokerstars.com"],
-                    "discord": ["discord.com", "discord.media"],
-                    "education": ["coursera.org", "udemy.com", "khanacademy.org"],
-                    "games": ["steam.com", "epicgames.com", "roblox.com"],
-                    "jetbrains": ["jetbrains.com", "youtrack.jetbrains.com"],
-                    "messengers": ["telegram.org", "messenger.com", "viber.com", "whatsapp.com"],
-                    "music": ["spotify.com", "soundcloud.com", "apple.music.com"],
-                    "news": ["cnn.com", "bbc.com", "reuters.com"],
-                    "porn": ["pornhub.com", "xvideos.com", "xnxx.com"],
-                    "shop": ["amazon.com", "ebay.com", "aliexpress.com"],
-                    "socials": ["facebook.com", "twitter.com", "instagram.com", "linkedin.com"],
-                    "tools": ["github.com", "gitlab.com", "bitbucket.org"],
-                    "torrent": ["rutracker.org", "thepiratebay.org", "1337x.to"],
-                    "video": ["netflix.com", "hulu.com", "primevideo.com"],
-                    "youtube": ["youtube.com", "youtu.be", "ytimg.com"]
-                };
-                
-                // Services for the requested category
-                const services = servicesByCategory[category] || [];
-                
-                // Simulate loading service data
-                const result = {};
-                
-                for (const service of services) {
-                    // Use the sample data from crunchyroll.com.json for all services
-                    // In a real implementation, this would read actual data files
-                    const cidrs = [
-                        "104.16.0.0/12",
-                        "108.136.0.0/14",
-                        "108.156.0.0/14",
-                        "13.224.0.0/12",
-                        "13.32.0.0/12",
-                        "143.204.0.0/16"
-                    ];
+                // Process services in the category
+                for (const [serviceName, serviceData] of Object.entries(categoryData.services)) {
+                    servicesData[formattedCategoryName].services[serviceName] = serviceData;
                     
-                    // Generate a display name from the service
-                    const displayName = service.split('.')[0]
-                        .replace(/-/g, ' ')
-                        .replace(/\b\w/g, l => l.toUpperCase());
-                    
-                    result[displayName] = {
-                        url: `https://${service}`,
-                        description: `Access ${displayName} website and services`,
-                        cidrs: cidrs
-                    };
+                    const serviceDiv = createServiceElement(formattedCategoryName, serviceName, serviceData);
+                    servicesGrid.appendChild(serviceDiv);
                 }
                 
-                return result;
+                categoryDiv.appendChild(servicesGrid);
+                categoriesContainer.appendChild(categoryDiv);
             }
             
             // Function to create a service element
@@ -386,7 +329,10 @@
                 checkbox.dataset.category = category;
                 checkbox.dataset.service = serviceName;
                 
-                // Create favicon URL - using Google's favicon service for demo
+                // Get service filename-friendly name (lowercase with dots)
+                const serviceFileName = serviceName.toLowerCase().replace(/ /g, ".");
+                
+                // Try to use local favicon first, then fallback to Google's service
                 const urlObj = new URL(serviceData.url);
                 const faviconUrl = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
                 
@@ -394,6 +340,16 @@
                 icon.className = 'service-icon';
                 icon.src = faviconUrl;
                 icon.alt = serviceName;
+                icon.onerror = function() {
+                    // If local favicon fails, try Google's favicon service
+                    try {
+                        const urlObj = new URL(serviceData.url);
+                        this.src = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
+                    } catch (e) {
+                        // If that fails too, use a generic icon
+                        this.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
+                    }
+                };
                 
                 const nameContainer = document.createElement('div');
                 
@@ -403,7 +359,13 @@
                 
                 const url = document.createElement('span');
                 url.className = 'service-url';
-                url.textContent = `(${new URL(serviceData.url).hostname})`;
+                try {
+                    const urlObj = new URL(serviceData.url);
+                    url.textContent = `(${urlObj.hostname})`;
+                } catch (e) {
+                    // Fallback if URL is invalid
+                    url.textContent = `(${serviceData.url})`;
+                }
                 
                 // Create tooltip with description
                 const tooltip = document.createElement('span');

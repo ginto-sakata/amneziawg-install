@@ -46,9 +46,9 @@ cat > "$OUTPUT_FILE" << EOF
 }
 EOF
 
-# First, get all service IDs from categories.json
-echo "Loading service mappings..."
-SERVICE_IDS=$(jq -r '.categories[].services[]' "$CATEGORIES_FILE")
+# First, get all service IDs from services.json (this is our whitelist)
+echo "Loading service whitelist..."
+SERVICE_IDS=$(jq -r 'keys[]' "$SERVICES_FILE")
 
 # Process each service file in the config directory
 echo "Processing service files..."
@@ -56,7 +56,7 @@ find "$CONFIG_DIR" -name "*.json" -type f | while read -r service_file; do
     # Get service ID from filename
     service_id=$(basename "$service_file" .json)
     
-    # Skip if service is not in our categories
+    # Skip if service is not in our whitelist
     if ! echo "$SERVICE_IDS" | grep -q "^$service_id$"; then
         echo "Skipping unknown service: $service_id"
         continue

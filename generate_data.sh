@@ -5,12 +5,12 @@ CONFIG_DIR="${1:-./iplist/config}"
 OUTPUT_DIR="${2:-./static_website}"
 SERVICES_FILE="${3:-./services.json}"
 
+echo "Generating data from $CONFIG_DIR to $OUTPUT_DIR..."
+
 # First, ensure we have the iplist repository
 echo "Ensuring iplist repository is available..."
-chmod +x ./clone_iplist.sh
+chmod +x clone_iplist.sh
 ./clone_iplist.sh
-
-echo "Generating data from $CONFIG_DIR to $OUTPUT_DIR..."
 
 # Ensure output directory exists
 mkdir -p "$OUTPUT_DIR"

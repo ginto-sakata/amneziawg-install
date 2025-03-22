@@ -499,16 +499,6 @@
                     
                     // Use Google's favicon service as the primary source
                     faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
-                    
-                    // Add error handler for the icon
-                    icon.onerror = function() {
-                        // If Google's service fails, try the direct favicon
-                        this.src = `https://${hostname}/favicon.ico`;
-                        this.onerror = function() {
-                            // If direct favicon fails, use the default icon
-                            this.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
-                        };
-                    };
                 } catch (e) {
                     faviconUrl = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
                 }
@@ -519,49 +509,25 @@
                 icon.alt = serviceName;
                 icon.loading = 'lazy';
                 
-                // Simplify service name by removing common suffixes and formatting
-                let displayName = serviceName
-                    // First, handle special cases
-                    .replace(/^BestchangeRu$/, 'BestChange')
-                    .replace(/^LostfilmTv$/, 'LostFilm.TV')
-                    .replace(/^EuronewsCom$/, 'Euronews')
-                    .replace(/^SpotifyCom$/, 'Spotify')
-                    .replace(/^NetflixCom$/, 'Netflix')
-                    .replace(/^YoutubeCom$/, 'YouTube')
-                    .replace(/^DiscordCom$/, 'Discord')
-                    .replace(/^TelegramOrg$/, 'Telegram')
-                    .replace(/^WhatsappCom$/, 'WhatsApp')
-                    .replace(/^MessengerCom$/, 'Messenger')
-                    .replace(/^ViberCom$/, 'Viber')
-                    .replace(/^SignalOrg$/, 'Signal')
-                    .replace(/^ProtonMe$/, 'Proton')
-                    .replace(/^MediumCom$/, 'Medium')
-                    .replace(/^NotionSo$/, 'Notion')
-                    .replace(/^MiroCom$/, 'Miro')
-                    .replace(/^ZapierCom$/, 'Zapier')
-                    .replace(/^ChessCom$/, 'Chess')
-                    .replace(/^GrammarlyCom$/, 'Grammarly')
-                    .replace(/^DuolingoCom$/, 'Duolingo')
-                    .replace(/^PixivNet$/, 'Pixiv')
-                    .replace(/^CrunchyrollCom$/, 'Crunchyroll')
-                    .replace(/^PatreonCom$/, 'Patreon')
-                    .replace(/^XCom$/, 'X (Twitter)')
-                    .replace(/^QuoraCom$/, 'Quora')
-                    .replace(/^InstagramCom$/, 'Instagram')
-                    .replace(/^TiktokCom$/, 'TikTok')
-                    .replace(/^FacebookCom$/, 'Facebook')
-                    .replace(/^LinkedinCom$/, 'LinkedIn')
-                    .replace(/^SoundcloudCom$/, 'SoundCloud')
-                    // Then handle general cases
-                    .replace(/\.(com|org|net|io|ai|tv|ru|eu|ag|fm|club|live|pro|online|info)$/i, '')
-                    .replace(/\./g, ' ')
-                    .replace(/\b\w/g, l => l.toUpperCase())
-                    .replace(/\s+/g, ' ')
-                    .trim();
+                // Add error handler for the icon
+                icon.onerror = function() {
+                    try {
+                        const urlObj = new URL(serviceData.url);
+                        const hostname = urlObj.hostname;
+                        // If Google's service fails, try the direct favicon
+                        this.src = `https://${hostname}/favicon.ico`;
+                        this.onerror = function() {
+                            // If direct favicon fails, use the default icon
+                            this.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
+                        };
+                    } catch (e) {
+                        this.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
+                    }
+                };
                 
                 const name = document.createElement('span');
                 name.className = 'service-name';
-                name.textContent = displayName;
+                name.textContent = serviceName;
                 name.dataset.url = serviceData.url;
                 
                 // Create tooltip with description

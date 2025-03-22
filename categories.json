@@ -55,13 +55,12 @@
             ]
         },
         "news": {
-            "name": "News & Media",
+            "name": "News",
             "services": [
                 "bbc.com",
                 "dw.com",
                 "hrw.org",
                 "ovd.info",
-                "thevillage.ru",
                 "moscowtimes.ru",
                 "novayagazeta.ru",
                 "bellingcat.com",
@@ -72,11 +71,7 @@
                 "gordonua.com",
                 "golosameriki.com",
                 "holod.media",
-                "paperpaper.ru",
-                "tayga.info",
-                "echofm.online",
                 "svoboda.org",
-                "exler.ru",
                 "verstka.media",
                 "vot-tak.tv",
                 "proekt.media",
@@ -86,7 +81,17 @@
                 "polit.ru",
                 "kasparov.ru",
                 "unian.net",
-                "krymr.com",
+                "krymr.com"
+            ]
+        },
+        "media": {
+            "name": "Media",
+            "services": [
+                "thevillage.ru",
+                "paperpaper.ru",
+                "tayga.info",
+                "echofm.online",
+                "exler.ru",
                 "agents.media",
                 "euronews.com",
                 "ej.ru",
@@ -223,6 +228,7 @@
         "messengers",
         "social",
         "news",
+        "media",
         "ai",
         "entertainment",
         "anime",

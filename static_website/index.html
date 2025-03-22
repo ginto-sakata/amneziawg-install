@@ -76,11 +76,16 @@
             font-weight: bold;
             color: #333;
         }
+        .services-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 10px 0;
+            flex-grow: 1;
+        }
         .category-actions {
             display: flex;
             gap: 5px;
             justify-content: flex-end;
-            margin-top: auto;
             padding-top: 10px;
             border-top: 1px solid #ddd;
         }
@@ -91,10 +96,6 @@
             background: none;
             border: none;
             padding: 2px 5px;
-        }
-        .services-list {
-            flex-grow: 1;
-            margin-bottom: 10px;
         }
         .service-item {
             margin-bottom: 6px;
@@ -114,11 +115,13 @@
             width: 24px;
             height: 24px;
             margin-right: 8px;
-            object-fit: contain;
+            object-fit: scale-down;
             vertical-align: middle;
             opacity: 0.8;
-            min-width: 24px; /* Ensure minimum size */
+            min-width: 24px;
             min-height: 24px;
+            max-width: 24px;
+            max-height: 24px;
         }
         .service:hover .service-icon {
             opacity: 1;
@@ -243,6 +246,9 @@
             <!-- Categories and services will be loaded here -->
             <div class="loading">Loading categories and services...</div>
         </div>
+
+        <!-- Hidden textarea for copying -->
+        <textarea id="output" style="position: absolute; left: -9999px;"></textarea>
     </div>
     
     <div id="notification" class="notification">Copied to clipboard!</div>
@@ -390,33 +396,6 @@
                         categoryTitle.textContent = formattedCategoryName;
                         categoryHeader.appendChild(categoryTitle);
                         
-                        // Add category actions
-                        const categoryActions = document.createElement('div');
-                        categoryActions.className = 'category-actions';
-                        
-                        // Create select/deselect buttons for this category
-                        const selectAllBtn = document.createElement('button');
-                        selectAllBtn.className = 'category-button';
-                        selectAllBtn.textContent = 'Select All';
-                        
-                        const deselectAllBtn = document.createElement('button');
-                        deselectAllBtn.className = 'category-button';
-                        deselectAllBtn.textContent = 'Deselect All';
-                        
-                        selectAllBtn.addEventListener('click', function() {
-                            const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
-                            checkboxes.forEach(cb => cb.checked = true);
-                        });
-                        
-                        deselectAllBtn.addEventListener('click', function() {
-                            const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
-                            checkboxes.forEach(cb => cb.checked = false);
-                        });
-                        
-                        categoryActions.appendChild(selectAllBtn);
-                        categoryActions.appendChild(deselectAllBtn);
-                        categoryHeader.appendChild(categoryActions);
-                        
                         categoryDiv.appendChild(categoryHeader);
                         
                         // Create services list
@@ -459,9 +438,9 @@
                             const favicon = document.createElement('img');
                             favicon.className = 'favicon';
                             favicon.alt = '';
-                            favicon.src = `https://www.google.com/s2/favicons?domain=${serviceId}&sz=32`;
+                            favicon.src = `https://www.google.com/s2/favicons?domain=${serviceId}&sz=24`;
                             favicon.onerror = function() {
-                                this.src = `https://www.google.com/s2/favicons?domain=${serviceId}&sz=32`;
+                                this.src = `https://www.google.com/s2/favicons?domain=${serviceId}&sz=24`;
                             };
                             icon.appendChild(favicon);
                             
@@ -521,6 +500,33 @@
                         
                         // Add services list to category
                         categoryDiv.appendChild(servicesList);
+                        
+                        // Create category actions at the bottom
+                        const categoryActions = document.createElement('div');
+                        categoryActions.className = 'category-actions';
+                        
+                        // Create select/deselect buttons for this category
+                        const selectAllBtn = document.createElement('button');
+                        selectAllBtn.className = 'category-button';
+                        selectAllBtn.textContent = 'Select All';
+                        
+                        const deselectAllBtn = document.createElement('button');
+                        deselectAllBtn.className = 'category-button';
+                        deselectAllBtn.textContent = 'Deselect All';
+                        
+                        selectAllBtn.addEventListener('click', function() {
+                            const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
+                            checkboxes.forEach(cb => cb.checked = true);
+                        });
+                        
+                        deselectAllBtn.addEventListener('click', function() {
+                            const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
+                            checkboxes.forEach(cb => cb.checked = false);
+                        });
+                        
+                        categoryActions.appendChild(selectAllBtn);
+                        categoryActions.appendChild(deselectAllBtn);
+                        categoryDiv.appendChild(categoryActions);
                         
                         // Add category to container
                         categoriesContainer.appendChild(categoryDiv);

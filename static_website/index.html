@@ -143,6 +143,7 @@
         }
         textarea#output {
             height: 60px;
+            width: 250%; /* Make textarea 2.5x wider */
         }
         .rkn-chan-container {
             position: absolute;
@@ -154,6 +155,16 @@
             height: 400px;
             object-fit: cover;
             object-position: top;
+        }
+        /* Stats counter styles */
+        .ip-stats {
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            color: #4b5563;
+        }
+        .ip-stats-warning {
+            color: #f59e0b;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -204,14 +215,22 @@
                     </button>
                 </div>
             </div>
-
+            
+            <!-- IP Stats Counter -->
+            <div class="ip-stats mb-2" id="ip-stats">
+                0 IPs in 0 routes selected (Recommended: &lt;100K routes for lower-end PCs)
+            </div>
+            
+            <!-- IP List Textarea - now visible by default -->
+            <textarea id="output" class="w-full h-20 p-4 border border-gray-300 rounded-md shadow-inner font-mono text-sm bg-gray-50 focus:ring-blue-500 focus:border-blue-500 mb-6" style="width: 250%;">0.0.0.0/0</textarea>
+            
             <div id="loader" class="flex justify-center py-8 hidden">
                 <svg class="animate-spin h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
             </div>
-
+            
             <div id="categories" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                 <!-- Categories will be dynamically loaded here -->
                 <div class="loading">Loading categories and services...</div>
@@ -221,14 +240,14 @@
         <!-- Hidden textarea for copying -->
         <textarea id="output" class="hidden w-full h-32 p-4 border border-gray-300 rounded-md shadow-inner font-mono text-sm bg-gray-50 focus:ring-blue-500 focus:border-blue-500" readonly></textarea>
     </div>
-
+    
     <div id="notification" class="notification fixed bottom-8 left-1/2 bg-green-600 text-white px-6 py-3 rounded-md shadow-lg hidden">
         <div class="flex items-center">
             <i class="fas fa-check-circle mr-2"></i>
             <span>Copied to clipboard!</span>
         </div>
     </div>
-
+    
     <script>
         // Store loaded service data
         const servicesData = {};
@@ -258,6 +277,7 @@
             const selectAllBtn = document.getElementById('select-all-btn');
             const deselectAllBtn = document.getElementById('deselect-all-btn');
             const darkModeToggle = document.querySelector('.dark-mode-toggle');
+            const ipStats = document.getElementById('ip-stats');
             
             // Dark mode toggle
             darkModeToggle.addEventListener('click', function() {
@@ -316,6 +336,12 @@
                     // Process service combinations
                     combineCIDRs(result.cidrs);
                     
+                    // Finally load the services
+                    await renderCategoriesAndServices();
+                    
+                    // Initialize the IP stats display
+                    updateIPStats();
+                    
                     return result;
                 } catch (error) {
                     console.error('Error loading data:', error);
@@ -328,6 +354,76 @@
                     throw error;
                 } finally {
                     loader.style.display = 'none';
+                }
+            }
+            
+            // Function to get all selected CIDRs
+            function getSelectedCIDRs() {
+                const selectedCIDRs = [];
+                const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+                
+                for (const checkbox of checkboxes) {
+                    const category = checkbox.dataset.category;
+                    const service = checkbox.dataset.service;
+                    
+                    if (servicesData[category] && servicesData[category].services[service]) {
+                        selectedCIDRs.push(...servicesData[category].services[service].cidrs);
+                    }
+                }
+                
+                // Remove duplicate CIDRs
+                return [...new Set(selectedCIDRs)];
+            }
+            
+            // Function to calculate total IPs in a CIDR range
+            function calculateTotalIPs(cidr) {
+                const parts = cidr.split('/');
+                const prefix = parseInt(parts[1], 10);
+                
+                // For IPv4 addresses
+                if (parts[0].includes('.')) {
+                    return Math.pow(2, 32 - prefix);
+                } 
+                // For IPv6 addresses
+                else if (parts[0].includes(':')) {
+                    return Math.pow(2, 128 - prefix);
+                }
+                
+                return 0;
+            }
+            
+            // Function to update IP stats display
+            function updateIPStats() {
+                const selectedCIDRs = getSelectedCIDRs();
+                const routeCount = selectedCIDRs.length;
+                
+                // Calculate total IPs
+                let totalIPs = 0;
+                for (const cidr of selectedCIDRs) {
+                    totalIPs += calculateTotalIPs(cidr);
+                }
+                
+                // Format the numbers with commas
+                const formattedIPs = totalIPs.toLocaleString();
+                const formattedRoutes = routeCount.toLocaleString();
+                
+                // Update the stats display
+                let statsText = `${formattedIPs} IPs in ${formattedRoutes} routes selected`;
+                
+                // Add warning if too many routes
+                if (routeCount > 100000) {
+                    statsText += ' <span class="ip-stats-warning">(Warning: High route count may impact performance)</span>';
+                } else {
+                    statsText += ' (Recommended: &lt;100K routes for lower-end PCs)';
+                }
+                
+                ipStats.innerHTML = statsText;
+                
+                // Update the textarea with the selected CIDRs
+                if (selectedCIDRs.length > 0) {
+                    output.value = selectedCIDRs.join(',');
+                } else {
+                    output.value = "0.0.0.0/0"; // Default to route everything
                 }
             }
             
@@ -483,19 +579,23 @@
                         
                         // Add click handlers
                         selectAllBtn.addEventListener('click', function() {
-                            const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
-                            checkboxes.forEach(cb => {
+                            document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                                 cb.checked = true;
                                 cb.closest('.service-item').classList.add('selected');
                             });
+                            
+                            // Update the IP stats
+                            updateIPStats();
                         });
                         
                         deselectAllBtn.addEventListener('click', function() {
-                            const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
-                            checkboxes.forEach(cb => {
+                            document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                                 cb.checked = false;
                                 cb.closest('.service-item').classList.remove('selected');
                             });
+                            
+                            // Update the IP stats
+                            updateIPStats();
                         });
                         
                         headerActions.appendChild(selectAllBtn);
@@ -550,10 +650,13 @@
                             checkbox.dataset.service = serviceId;
                             checkbox.addEventListener('change', function() {
                                 if (this.checked) {
-                                    serviceItem.classList.add('selected');
+                                    this.closest('.service-item').classList.add('selected');
                                 } else {
-                                    serviceItem.classList.remove('selected');
+                                    this.closest('.service-item').classList.remove('selected');
                                 }
+                                
+                                // Update the IP stats when a checkbox is changed
+                                updateIPStats();
                             });
                             
                             // Create favicon
@@ -650,6 +753,9 @@
                             <p class="text-gray-500">${error.message}</p>
                         </div>`;
                 }
+                
+                // Update the IP stats after rendering
+                updateIPStats();
             }
             
             // Setup search functionality
@@ -699,42 +805,9 @@
                 });
             });
             
-            // Select all button functionality
-            selectAllBtn.addEventListener('click', function() {
-                const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-                checkboxes.forEach(cb => {
-                    cb.checked = true;
-                    cb.closest('.service-item').classList.add('selected');
-                });
-            });
-            
-            // Deselect all button functionality
-            deselectAllBtn.addEventListener('click', function() {
-                const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-                checkboxes.forEach(cb => {
-                    cb.checked = false;
-                    cb.closest('.service-item').classList.remove('selected');
-                });
-            });
-            
             // Setup generate and copy button
             generateAndCopyBtn.addEventListener('click', function() {
-                const selectedCIDRs = [];
-                const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
-                
-                if (checkboxes.length === 0) {
-                    alert('Please select at least one service');
-                    return;
-                }
-                
-                for (const checkbox of checkboxes) {
-                    const category = checkbox.dataset.category;
-                    const service = checkbox.dataset.service;
-                    
-                    if (servicesData[category] && servicesData[category].services[service]) {
-                        selectedCIDRs.push(...servicesData[category].services[service].cidrs);
-                    }
-                }
+                const selectedCIDRs = getSelectedCIDRs();
                 
                 if (selectedCIDRs.length > 0) {
                     // Remove duplicate CIDRs
@@ -742,42 +815,40 @@
                     
                     // Join with commas
                     output.value = uniqueCIDRs.join(',');
-                    output.classList.remove('hidden');
                     
-                    // Copy to clipboard
-                    output.select();
-                    
-                    try {
-                        const successful = document.execCommand('copy');
-                        if (successful) {
-                            notification.classList.remove('hidden');
-                            setTimeout(() => {
-                                notification.classList.add('hidden');
-                            }, 2000);
-                        } else {
-                            throw new Error('Copy command failed');
-                        }
-                    } catch (err) {
-                        // For modern browsers
-                        if (navigator.clipboard) {
-                            navigator.clipboard.writeText(output.value)
-                                .then(() => {
-                                    notification.classList.remove('hidden');
-                                    setTimeout(() => {
-                                        notification.classList.add('hidden');
-                                    }, 2000);
-                                })
-                                .catch(err => {
-                                    console.error('Failed to copy text: ', err);
-                                    alert('Failed to copy text to clipboard');
-                                });
-                        } else {
+                    // Copy to clipboard using modern API
+                    if (navigator.clipboard) {
+                        navigator.clipboard.writeText(output.value)
+                            .then(() => {
+                                notification.classList.remove('hidden');
+                                setTimeout(() => {
+                                    notification.classList.add('hidden');
+                                }, 2000);
+                            })
+                            .catch(err => {
+                                console.error('Could not copy text: ', err);
+                                alert('Failed to copy to clipboard. Please copy manually.');
+                            });
+                    } else {
+                        // Fallback for older browsers
+                        output.select();
+                        try {
+                            const successful = document.execCommand('copy');
+                            if (successful) {
+                                notification.classList.remove('hidden');
+                                setTimeout(() => {
+                                    notification.classList.add('hidden');
+                                }, 2000);
+                            } else {
+                                throw new Error('Copy command failed');
+                            }
+                        } catch (err) {
                             console.error('Could not copy text: ', err);
-                            alert('Failed to copy text to clipboard. Your browser may not support this feature.');
+                            alert('Failed to copy to clipboard. Please copy manually.');
                         }
                     }
                 } else {
-                    alert('No IP ranges found for selected services');
+                    alert('Please select at least one service');
                 }
             });
             

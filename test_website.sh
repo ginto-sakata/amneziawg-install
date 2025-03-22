@@ -38,26 +38,14 @@ fi
 
 echo "Working in directory: $WORKING_DIR"
 
-# 1. Download or clone iplist/config
-if [ -d "iplist" ]; then
-    echo "Updating iplist repository..."
-    cd iplist
-    git pull
-    cd ..
-else
-    echo "Cloning iplist repository..."
-    git clone -n --depth=1 --filter=tree:0 https://github.com/rekryt/iplist
-    cd iplist
-    git sparse-checkout set --no-cone /config
-    git checkout
-    cd ..
-fi
+# 1. Clone/update iplist repository (using the standalone script)
+chmod +x clone_iplist.sh
+./clone_iplist.sh
 
 # 2. Generate data
-cp -r ./iplist/config/ ./static_website/config/ 2>/dev/null || true
+# IMPORTANT: Don't copy config to static_website anymore
 chmod +x generate_data.sh
-./generate_data.sh ./static_website ./static_website/data.json
-
+./generate_data.sh ./iplist/config ./static_website/data.json
 
 # 3. Serve website for testing
 echo -e "${GREEN}Starting web server using Python 3 at http://${SERVER_IP}:${WEB_PORT}${NC}"
@@ -73,7 +61,7 @@ elif command -v python &>/dev/null; then
     python -m SimpleHTTPServer $WEB_PORT
 # Use PHP's built-in server if available
 elif command -v php &>/dev/null; then
-    php -S "localhost:$WEB_PORT"
+    php -S "0.0.0.0:$WEB_PORT"
 # Use Node.js http-server if available
 elif command -v npx &>/dev/null; then
     npx http-server -p $WEB_PORT

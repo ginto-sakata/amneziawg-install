@@ -6,6 +6,9 @@ OUTPUT_FILE="${2:-./static_website/data.json}"
 
 echo "Generating data from $CONFIG_DIR to $OUTPUT_FILE..."
 
+# Ensure output directory exists
+mkdir -p $(dirname "$OUTPUT_FILE")
+
 # Create initial JSON structure
 cat > "$OUTPUT_FILE" << EOF
 {
@@ -20,6 +23,7 @@ if command -v jq &> /dev/null; then
     HAS_JQ=1
 else
     echo "Warning: jq not found, will use basic text processing (less reliable)"
+    echo "Install jq for better results: apt-get install jq"
     HAS_JQ=0
 fi
 
@@ -104,5 +108,12 @@ done
 
 # Fix trailing commas (if any)
 sed -i 's/,}/}/g' "$OUTPUT_FILE"
+sed -i 's/},}/}}/g' "$OUTPUT_FILE"
+
+# Fix the JSON if using sed method
+if [ "$HAS_JQ" -eq 0 ]; then
+    # Remove the trailing comma after the last category
+    sed -i 's/,\s*}/}/g' "$OUTPUT_FILE"
+fi
 
 echo "Data generation complete. File saved to: $OUTPUT_FILE"

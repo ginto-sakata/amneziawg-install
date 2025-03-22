@@ -18,7 +18,7 @@
         .category-card {
             transition: all 0.2s ease;
             border: 1px solid #e5e7eb;
-            height: 420px;
+            height: 460px;
             display: flex;
             flex-direction: column;
         }
@@ -142,7 +142,18 @@
             margin-right: 8px;
         }
         textarea#output {
-            height: 24px;
+            height: 60px;
+        }
+        .rkn-chan-container {
+            position: absolute;
+            right: 0;
+            top: -180px;
+            z-index: -1;
+        }
+        .rkn-chan-container img {
+            height: 400px;
+            object-fit: cover;
+            object-position: top;
         }
     </style>
 </head>
@@ -164,8 +175,10 @@
                     <button class="dark-mode-toggle p-2 rounded-full hover:bg-gray-200 focus:outline-none" title="Toggle dark mode">
                         <i class="fas fa-moon text-gray-700"></i>
                     </button>
-                    <img src="rknchan.png" alt="RKN Chan" class="h-32 ml-4" style="margin-top: -60px;">
                 </div>
+            </div>
+            <div class="rkn-chan-container">
+                <img src="rknchan.png" alt="RKN Chan">
             </div>
             <p class="text-gray-600 max-w-3xl">Select the websites and services you want to route through AmneziaWG's secure tunnel.<br><br>
             Your selections will generate a list of IP ranges to use in your client's configuration (AllowedIPs).</p>

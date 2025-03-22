@@ -1333,22 +1333,7 @@ function configureAllowedIPs() {
 	echo "2) Route specific websites only"
 	read -rp "Select an option [1-2]: " ROUTE_OPTION
 	
-	# Create home directory for AmneziaWG if it doesn't exist
-	HOME_DIR=$(getHomeDirForClient "${SUDO_USER:-root}")
-	AMNEZIAWG_DIR="${HOME_DIR}/amneziawg"
-	mkdir -p "${AMNEZIAWG_DIR}"
-	
-	# Check if default routing exists
-	DEFAULT_ROUTING_FILE="${AMNEZIAWG_DIR}/default_allowedips.txt"
-	if [[ -f "${DEFAULT_ROUTING_FILE}" ]]; then
-		echo -e "${GREEN}Default routing settings found.${NC}"
-		echo -e "Current default routing: $(cat ${DEFAULT_ROUTING_FILE})"
-		echo "3) Use default routing settings"
-		echo "4) Change default routing settings"
-		read -rp "Select an option [1-4]: " ROUTE_OPTION
-	fi
-	
-	if [[ ${ROUTE_OPTION} == "2" || ${ROUTE_OPTION} == "4" ]]; then
+	if [[ ${ROUTE_OPTION} == "2" ]]; then
 		startWebServer
 		echo "Please paste the IP list generated from the website:"
 		read -rp "IP List: " ALLOWED_IPS
@@ -1357,30 +1342,9 @@ function configureAllowedIPs() {
 		if [[ ! ${ALLOWED_IPS} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}(,([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2})*$ ]]; then
 			echo "Invalid format. Using default (all traffic)"
 			ALLOWED_IPS="0.0.0.0/0"
-		else
-			# Save as default if requested
-			echo -e "${GREEN}Do you want to save these routing settings as default for future clients?${NC}"
-			read -rp "Save as default? [y/n]: " SAVE_DEFAULT
-			if [[ ${SAVE_DEFAULT} == "y" ]]; then
-				echo "${ALLOWED_IPS}" > "${DEFAULT_ROUTING_FILE}"
-				echo -e "${GREEN}Routing settings saved as default.${NC}"
-			fi
 		fi
-	elif [[ ${ROUTE_OPTION} == "3" ]]; then
-		# Use default routing settings
-		ALLOWED_IPS=$(cat "${DEFAULT_ROUTING_FILE}")
-		echo -e "${GREEN}Using default routing settings.${NC}"
 	else
 		ALLOWED_IPS="0.0.0.0/0"
-		# Optionally save this as default
-		if [[ ! -f "${DEFAULT_ROUTING_FILE}" ]]; then
-			echo -e "${GREEN}Do you want to save 'route all traffic' as default for future clients?${NC}"
-			read -rp "Save as default? [y/n]: " SAVE_DEFAULT
-			if [[ ${SAVE_DEFAULT} == "y" ]]; then
-				echo "${ALLOWED_IPS}" > "${DEFAULT_ROUTING_FILE}"
-				echo -e "${GREEN}Routing settings saved as default.${NC}"
-			fi
-		fi
 	fi
 	
 	if [[ ${ENABLE_IPV6} == "y" ]]; then

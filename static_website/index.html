@@ -395,41 +395,67 @@
                         
                         // Set icon based on category
                         switch(formattedCategoryName.toLowerCase()) {
-                            case 'streaming':
-                                icon.src = 'https://www.google.com/s2/favicons?domain=youtube.com&sz=128'; // YouTube icon
+                            case 'video streaming':
+                                icon.src = 'https://www.google.com/s2/favicons?domain=youtube.com&sz=128';
                                 break;
-                            case 'communication':
-                                icon.src = 'https://www.google.com/s2/favicons?domain=discord.com&sz=128'; // Discord icon
+                            case 'messengers':
+                                icon.src = 'https://www.google.com/s2/favicons?domain=discord.com&sz=128';
                                 break;
-                            case 'gaming':
-                                icon.src = 'https://cdn.frankerfacez.com/emoticon/243789/2'; // Pepega
-                                break;
-                            case 'development':
-                                icon.src = 'https://cdn.frankerfacez.com/emoticon/489726/2'; // Looking
-                                break;
-                            case 'social':
-                                icon.src = 'https://cdn.frankerfacez.com/emoticon/381875/2'; // KEKW
-                                break;
-                            case 'anime':
-                                icon.src = 'https://cdn.frankerfacez.com/emoticon/162146/2'; // AYAYA
+                            case 'social media':
+                                icon.src = 'https://cdn.frankerfacez.com/emoticon/128054/2'; // OMEGALUL
                                 break;
                             case 'news':
                                 icon.src = 'https://cdn.frankerfacez.com/emoticon/214681/2'; // monkaW
                                 break;
                             case 'media':
-                                icon.src = 'https://cdn.frankerfacez.com/emoticon/210748/2'; // POG
+                                // Random between POGGERS and OMEGALUL
+                                icon.src = Math.random() < 0.5 ? 
+                                    'https://cdn.frankerfacez.com/emoticon/214129/2' : // POGGERS
+                                    'https://cdn.frankerfacez.com/emoticon/128054/2'; // OMEGALUL
                                 break;
                             case 'ai tools':
-                                icon.src = 'https://cdn.frankerfacez.com/emoticon/720568/animated/2'; // modcheck
+                                icon.src = 'https://cdn.oaistatic.com/assets/favicon-180x180-od45eci6.webp'; // ChatGPT
+                                break;
+                            case 'entertainment':
+                                icon.src = 'https://cdn.frankerfacez.com/emoticon/139407/2';
+                                break;
+                            case 'anime & manga':
+                                // Random between AYAYA, VoHiYo, and PikaS
+                                const animeEmotes = [
+                                    'https://cdn.frankerfacez.com/emoticon/162146/2', // AYAYA
+                                    'https://cdn.frankerfacez.com/emoticon/511867/2', // VoHiYo
+                                    'https://cdn.frankerfacez.com/emoticon/298485/2'  // PikaS
+                                ];
+                                icon.src = animeEmotes[Math.floor(Math.random() * animeEmotes.length)];
+                                break;
+                            case 'tools & utilities':
+                                icon.src = 'https://cdn.frankerfacez.com/emoticon/239504/2';
+                                break;
+                            case 'adult content':
+                                icon.textContent = '🍆';
+                                icon.style.fontSize = '20px';
+                                icon.removeAttribute('src');
+                                break;
+                            case 'torrent sites':
+                                // Random between KKomrade and the original torrent icon
+                                icon.src = Math.random() < 0.5 ?
+                                    'https://cdn.frankerfacez.com/emoticon/145916/2' : // KKomrade
+                                    'https://cdn.frankerfacez.com/emoticon/341168/2'; // Original
+                                break;
+                            case 'miscellaneous':
+                                // Random between PepeHands and WeirdChamp
+                                icon.src = Math.random() < 0.5 ?
+                                    'https://cdn.frankerfacez.com/emoticon/231552/2' : // PepeHands
+                                    'https://cdn.frankerfacez.com/emoticon/421124/2'; // WeirdChamp
                                 break;
                             default:
-                                icon.src = 'https://cdn.frankerfacez.com/emoticon/130762/2'; // monkaS as fallback
+                                icon.src = 'https://cdn.frankerfacez.com/emoticon/231552/2'; // PepeHands as fallback
                         }
                         
                         // Add error handling for emote loading
                         icon.onerror = function() {
-                            // Fallback to monkaS if emote fails to load
-                            this.src = 'https://cdn.frankerfacez.com/emoticon/130762/2';
+                            // Fallback to PepeHands if emote fails to load
+                            this.src = 'https://cdn.frankerfacez.com/emoticon/231552/2';
                         };
                         
                         const titleContainer = document.createElement('div');

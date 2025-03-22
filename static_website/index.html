@@ -525,9 +525,94 @@
                     }
                 };
                 
+                // Simplify service name by removing common suffixes and formatting
+                let displayName = serviceName
+                    // First, handle special cases with proper capitalization
+                    .replace(/^BestchangeRu$/, 'BestChange')
+                    .replace(/^LostfilmTv$/, 'LostFilm.TV')
+                    .replace(/^EuronewsCom$/, 'Euronews')
+                    .replace(/^SpotifyCom$/, 'Spotify')
+                    .replace(/^NetflixCom$/, 'Netflix')
+                    .replace(/^YoutubeCom$/, 'YouTube')
+                    .replace(/^DiscordCom$/, 'Discord')
+                    .replace(/^DiscordGg$/, 'Discord')
+                    .replace(/^DiscordMedia$/, 'Discord')
+                    .replace(/^TelegramOrg$/, 'Telegram')
+                    .replace(/^WhatsappCom$/, 'WhatsApp')
+                    .replace(/^MessengerCom$/, 'Messenger')
+                    .replace(/^ViberCom$/, 'Viber')
+                    .replace(/^SignalOrg$/, 'Signal')
+                    .replace(/^ProtonMe$/, 'Proton')
+                    .replace(/^MediumCom$/, 'Medium')
+                    .replace(/^NotionSo$/, 'Notion')
+                    .replace(/^MiroCom$/, 'Miro')
+                    .replace(/^ZapierCom$/, 'Zapier')
+                    .replace(/^ChessCom$/, 'Chess')
+                    .replace(/^GrammarlyCom$/, 'Grammarly')
+                    .replace(/^DuolingoCom$/, 'Duolingo')
+                    .replace(/^PixivNet$/, 'Pixiv')
+                    .replace(/^CrunchyrollCom$/, 'Crunchyroll')
+                    .replace(/^PatreonCom$/, 'Patreon')
+                    .replace(/^XCom$/, 'X (Twitter)')
+                    .replace(/^QuoraCom$/, 'Quora')
+                    .replace(/^InstagramCom$/, 'Instagram')
+                    .replace(/^TiktokCom$/, 'TikTok')
+                    .replace(/^FacebookCom$/, 'Facebook')
+                    .replace(/^LinkedinCom$/, 'LinkedIn')
+                    .replace(/^SoundcloudCom$/, 'SoundCloud')
+                    // Handle news sites
+                    .replace(/^BbcCom$/, 'BBC')
+                    .replace(/^DwCom$/, 'DW')
+                    .replace(/^HrwOrg$/, 'HRW')
+                    .replace(/^OvdInfo$/, 'OVD-Info')
+                    .replace(/^TheVillageRu$/, 'The Village')
+                    .replace(/^MoscowtimesRu$/, 'Moscow Times')
+                    .replace(/^NovayagazetaRu$/, 'Novaya Gazeta')
+                    // Handle anime sites
+                    .replace(/^AnilibriaTv$/, 'Anilibria.TV')
+                    .replace(/^NyaaSi$/, 'Nyaa.si')
+                    .replace(/^NyaaLand$/, 'Nyaa.land')
+                    // Handle art sites
+                    .replace(/^DanbooruDonmaiUs$/, 'Danbooru')
+                    .replace(/^GelbooruCom$/, 'Gelbooru')
+                    // Handle casino sites
+                    .replace(/^7kCasino$/, '7K Casino')
+                    // Handle porn sites
+                    .replace(/^PornhubCom$/, 'PornHub')
+                    .replace(/^XhamsterCom$/, 'XHamster')
+                    .replace(/^XhamsterliveCom$/, 'XHamster Live')
+                    .replace(/^XnxxRuCom$/, 'XNXX')
+                    .replace(/^XvideosCom$/, 'XVideos')
+                    // Handle tools
+                    .replace(/^10minutemailCom$/, '10MinuteMail')
+                    .replace(/^ConnectGarminCom$/, 'Garmin Connect')
+                    .replace(/^JetbrainsCom$/, 'JetBrains')
+                    .replace(/^Jetbrains@cdn$/, 'JetBrains CDN')
+                    .replace(/^Jetbrains@grazieAi$/, 'JetBrains Grazie')
+                    .replace(/^LinktrEe$/, 'Linktree')
+                    .replace(/^TrainingpeaksCom$/, 'TrainingPeaks')
+                    // Handle torrent sites
+                    .replace(/^1337xTo$/, '1337x')
+                    .replace(/^ThepiratebayOrg$/, 'The Pirate Bay')
+                    .replace(/^RutrackerOrg$/, 'RuTracker')
+                    .replace(/^RutorInfo$/, 'Rutor')
+                    .replace(/^NnmclubTo$/, 'NNM-Club')
+                    // Handle shop sites
+                    .replace(/^RalphlaurenEu$/, 'Ralph Lauren')
+                    // Then handle general cases
+                    .replace(/\.(com|org|net|io|ai|tv|ru|eu|ag|fm|club|live|pro|online|info)$/i, '')
+                    .replace(/\./g, ' ')
+                    .replace(/\b\w/g, l => l.toUpperCase())
+                    .replace(/\s+/g, ' ')
+                    .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2') // Add space between camelCase
+                    .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space between camelCase
+                    .replace(/([A-Z])([A-Z])([a-z])/g, '$1 $2 $3') // Fix consecutive capitals
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                
                 const name = document.createElement('span');
                 name.className = 'service-name';
-                name.textContent = serviceName;
+                name.textContent = displayName;
                 name.dataset.url = serviceData.url;
                 
                 // Create tooltip with description

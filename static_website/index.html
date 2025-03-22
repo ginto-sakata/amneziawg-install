@@ -343,7 +343,7 @@
             }
             
             // Function to format service ID into display name
-            function formatDisplayName(serviceId) {
+            function formatDisplayName(serviceId, services) {
                 return services[serviceId] || serviceId
                     .replace(/\.(com|org|net|io|ai|tv|ru|eu|ag|fm|club|live|pro|online|info)$/i, '')
                     .replace(/\./g, ' ')
@@ -410,6 +410,7 @@
                         
                         // Add category title
                         const categoryTitle = document.createElement('h2');
+                        categoryTitle.className = 'category-title';
                         categoryTitle.textContent = formattedCategoryName;
                         categoryHeader.appendChild(categoryTitle);
                         
@@ -500,8 +501,9 @@
                             // Create service name
                             const name = document.createElement('span');
                             name.className = 'service-name';
-                            name.textContent = formatDisplayName(serviceId);
+                            name.textContent = formatDisplayName(serviceId, services);
                             name.dataset.url = `https://${serviceId}`;
+                            name.dataset.serviceName = serviceId.toLowerCase(); // Add this for search functionality
                             
                             // Create tooltip with description
                             const tooltip = document.createElement('div');

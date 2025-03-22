@@ -31,7 +31,7 @@
         }
         .service-item.selected {
             background-color: #f0f9ff;
-            border-left: 3px solid #3b82f6;
+            border-left: 3px solid #4f8bff;
         }
         .service-item img {
             filter: grayscale(0.5);
@@ -54,15 +54,6 @@
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #a1a1a1;
-        }
-        .tooltip {
-            visibility: hidden;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .service-item:hover .tooltip {
-            visibility: visible;
-            opacity: 1;
         }
         .search-highlight {
             background-color: #fef3c7;
@@ -99,7 +90,7 @@
             padding: 8px;
             position: absolute;
             z-index: 10;
-            bottom: 125%;
+            top: -45px; /* Changed from bottom: 125% to top: -45px */
             left: 0;
             opacity: 0;
             transition: opacity 0.3s;
@@ -111,22 +102,23 @@
             visibility: visible;
             opacity: 1;
         }
-        /* Link active state (for CTRL clicking) */
-        .service-name.link-active {
-            color: #3b82f6;
-            text-decoration: underline;
-            cursor: pointer;
-            background-color: rgba(59, 130, 246, 0.1);
-            padding: 2px 4px;
-            border-radius: 3px;
+        .external-link-icon {
+            color: #4f8bff;
+            font-size: 12px;
+            margin-left: 5px;
+            opacity: 0.7;
+            transition: opacity 0.15s ease;
+        }
+        .external-link-icon:hover {
+            opacity: 1;
         }
     </style>
 </head>
 <body class="min-h-screen">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <header class="mb-8">
+    <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <header class="mb-6">
             <div class="flex justify-between items-center mb-3">
-                <h1 class="text-3xl font-bold text-indigo-700">AmneziaWG Site Selection</h1>
+                <h1 class="text-3xl font-bold text-blue-600">AmneziaWG Site Selection</h1>
                 <button class="dark-mode-toggle p-2 rounded-full hover:bg-gray-200 focus:outline-none" title="Toggle dark mode">
                     <i class="fas fa-moon text-gray-700"></i>
                 </button>
@@ -140,44 +132,36 @@
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i class="fas fa-search text-gray-400"></i>
                     </div>
-                    <input id="search-input" type="text" class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150" placeholder="Search websites and services...">
+                    <input id="search-input" type="text" class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150" placeholder="Search websites and services...">
                 </div>
                 <div class="flex space-x-2">
-                    <button id="select-all-btn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
+                    <button id="select-all-btn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition w-32">
                         <i class="fas fa-check-square mr-2"></i> Select All
                     </button>
-                    <button id="deselect-all-btn" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
+                    <button id="deselect-all-btn" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition w-32">
                         <i class="fas fa-square mr-2"></i> Deselect All
                     </button>
+                    <button id="generate-and-copy-btn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition w-32">
+                        <i class="fas fa-copy mr-2"></i> Copy IP List
+                    </button>
                 </div>
-            </div>
-
-            <div class="text-sm text-gray-500 italic mb-4 flex items-center">
-                <i class="fas fa-info-circle mr-2 text-indigo-500"></i>
-                <span>Pro tip: Hold <kbd class="px-2 py-1 bg-gray-100 rounded">CTRL</kbd> and click on a service name to open its website in a new tab</span>
             </div>
 
             <div id="loader" class="flex justify-center py-8 hidden">
-                <svg class="animate-spin h-10 w-10 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg class="animate-spin h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
             </div>
 
-            <div id="categories" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div id="categories" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                 <!-- Categories will be dynamically loaded here -->
                 <div class="loading">Loading categories and services...</div>
             </div>
         </div>
 
-        <div class="flex justify-center mb-8">
-            <button id="generate-and-copy-btn" class="inline-flex items-center px-6 py-3 border border-transparent text-lg font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">
-                <i class="fas fa-list-check mr-2"></i> Generate IP List & Copy to Clipboard
-            </button>
-        </div>
-
         <!-- Hidden textarea for copying -->
-        <textarea id="output" class="hidden w-full h-32 p-4 border border-gray-300 rounded-md shadow-inner font-mono text-sm bg-gray-50 focus:ring-indigo-500 focus:border-indigo-500" readonly></textarea>
+        <textarea id="output" class="hidden w-full h-32 p-4 border border-gray-300 rounded-md shadow-inner font-mono text-sm bg-gray-50 focus:ring-blue-500 focus:border-blue-500" readonly></textarea>
     </div>
 
     <div id="notification" class="notification fixed bottom-8 left-1/2 bg-green-600 text-white px-6 py-3 rounded-md shadow-lg hidden">
@@ -192,6 +176,20 @@
         const servicesData = {};
         let descriptions = {};
         
+        // Service combination mapping
+        const serviceCombineMap = {
+            'discord.com': ['discord.media', 'discord.gg'],
+            'jetbrains.com': ['jetbrains.cdn', 'jetbrains.grazie.ai']
+        };
+        
+        // Reverse mapping for faster lookups
+        const reverseCombineMap = {};
+        for (const [primary, secondaries] of Object.entries(serviceCombineMap)) {
+            for (const secondary of secondaries) {
+                reverseCombineMap[secondary] = primary;
+            }
+        }
+        
         document.addEventListener('DOMContentLoaded', async function() {
             const loader = document.getElementById('loader');
             const categoriesContainer = document.getElementById('categories');
@@ -203,10 +201,6 @@
             const deselectAllBtn = document.getElementById('deselect-all-btn');
             const darkModeToggle = document.querySelector('.dark-mode-toggle');
             
-            // Track if Ctrl key is pressed and currently hovered service
-            let ctrlPressed = false;
-            let hoveredService = null;
-            
             // Dark mode toggle
             darkModeToggle.addEventListener('click', function() {
                 document.documentElement.classList.toggle('dark');
@@ -217,24 +211,6 @@
                 } else {
                     icon.classList.remove('fa-sun');
                     icon.classList.add('fa-moon');
-                }
-            });
-            
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Control') {
-                    ctrlPressed = true;
-                    if (hoveredService) {
-                        hoveredService.classList.add('link-active');
-                    }
-                }
-            });
-            
-            document.addEventListener('keyup', function(e) {
-                if (e.key === 'Control') {
-                    ctrlPressed = false;
-                    if (hoveredService) {
-                        hoveredService.classList.remove('link-active');
-                    }
                 }
             });
             
@@ -285,6 +261,9 @@
                         cidrs: cidrs.services
                     };
                     
+                    // Process service combinations
+                    combineCIDRs(result.cidrs);
+                    
                     // Debug logging
                     console.log('Combined data:', result);
                     
@@ -300,6 +279,29 @@
                     throw error;
                 } finally {
                     loader.style.display = 'none';
+                }
+            }
+            
+            // Function to combine CIDRs for related services
+            function combineCIDRs(cidrs) {
+                // Process each primary service
+                for (const [primary, secondaries] of Object.entries(serviceCombineMap)) {
+                    if (!cidrs[primary]) continue;
+                    
+                    // Combine CIDRs from secondaries into the primary service
+                    for (const secondary of secondaries) {
+                        if (cidrs[secondary]) {
+                            // Add secondary CIDRs to primary
+                            cidrs[primary].cidrs = [...new Set([
+                                ...cidrs[primary].cidrs,
+                                ...cidrs[secondary].cidrs
+                            ])];
+                            
+                            // Mark secondary for removal from UI
+                            cidrs[secondary].combined = true;
+                            cidrs[secondary].primaryService = primary;
+                        }
+                    }
                 }
             }
             
@@ -338,29 +340,29 @@
                         categoryDiv.className = 'category-card bg-white rounded-lg shadow-sm overflow-hidden';
                         categoryDiv.dataset.category = formattedCategoryName;
                         
-                        // Create category header - updated with Tailwind styles
+                        // Create category header - updated with blue pastel gradient
                         const categoryHeader = document.createElement('div');
-                        categoryHeader.className = 'bg-gradient-to-r from-indigo-500 to-purple-600 p-4 text-white';
+                        categoryHeader.className = 'bg-gradient-to-r from-blue-400 to-blue-300 p-3 text-white';
                         
                         // Add category title and actions container
                         const categoryTitle = document.createElement('div');
                         categoryTitle.className = 'flex justify-between items-center';
                         
                         const title = document.createElement('h3');
-                        title.className = 'text-lg font-semibold';
+                        title.className = 'text-base font-semibold';
                         title.textContent = formattedCategoryName;
                         
                         const headerActions = document.createElement('div');
-                        headerActions.className = 'flex space-x-2';
+                        headerActions.className = 'flex space-x-1';
                         
-                        // Create select all button
+                        // Create select all button - standardized size
                         const selectAllBtn = document.createElement('button');
-                        selectAllBtn.className = 'text-xs px-2 py-1 bg-white bg-opacity-20 hover:bg-opacity-30 rounded transition focus:outline-none';
-                        selectAllBtn.textContent = 'Select All';
+                        selectAllBtn.className = 'text-xs px-2 py-1 bg-white bg-opacity-20 hover:bg-opacity-30 rounded transition focus:outline-none w-14';
+                        selectAllBtn.textContent = 'All';
                         
-                        // Create deselect all button
+                        // Create deselect all button - standardized size
                         const deselectAllBtn = document.createElement('button');
-                        deselectAllBtn.className = 'text-xs px-2 py-1 bg-white bg-opacity-20 hover:bg-opacity-30 rounded transition focus:outline-none';
+                        deselectAllBtn.className = 'text-xs px-2 py-1 bg-white bg-opacity-20 hover:bg-opacity-30 rounded transition focus:outline-none w-14';
                         deselectAllBtn.textContent = 'None';
                         
                         // Add click handlers
@@ -390,14 +392,20 @@
                         
                         // Create services list - updated with Tailwind styles
                         const servicesList = document.createElement('div');
-                        servicesList.className = 'p-3 max-h-80 overflow-y-auto';
+                        servicesList.className = 'p-2 max-h-60 overflow-y-auto';
                         
                         // Save category services in our data structure
                         servicesData[formattedCategoryName] = { services: {} };
                         
                         // Get and sort services
                         let serviceEntries = categoryData.services
-                            .filter(serviceId => cidrs[serviceId])
+                            .filter(serviceId => {
+                                // Filter out services that should be combined with others
+                                const service = cidrs[serviceId];
+                                if (!service) return false;
+                                if (service.combined) return false;
+                                return true;
+                            })
                             .map(serviceId => [serviceId, cidrs[serviceId]]);
                         
                         // Sort services alphabetically by display name
@@ -421,7 +429,7 @@
                             // Create checkbox
                             const checkbox = document.createElement('input');
                             checkbox.type = 'checkbox';
-                            checkbox.className = 'h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-3';
+                            checkbox.className = 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-3';
                             checkbox.dataset.category = formattedCategoryName;
                             checkbox.dataset.service = serviceId;
                             checkbox.addEventListener('change', function() {
@@ -445,22 +453,48 @@
                                 this.style.height = '20px';
                             };
                             
-                            // Create service name
+                            // Create service name with link icon
+                            const nameContainer = document.createElement('div');
+                            nameContainer.className = 'flex items-center flex-grow';
+                            
                             const name = document.createElement('span');
-                            name.className = 'service-name text-sm font-medium text-gray-700 flex-grow';
+                            name.className = 'service-name text-sm font-medium text-gray-700';
                             name.textContent = formatDisplayName(serviceId, services);
-                            name.dataset.url = `https://${serviceId}`;
-                            name.dataset.serviceName = serviceId.toLowerCase(); // For search functionality
+                            
+                            const linkIcon = document.createElement('a');
+                            linkIcon.href = `https://${serviceId}`;
+                            linkIcon.target = '_blank';
+                            linkIcon.rel = 'noopener noreferrer';
+                            linkIcon.className = 'external-link-icon';
+                            linkIcon.innerHTML = '<i class="fas fa-external-link-alt"></i>';
+                            linkIcon.title = `Open ${serviceId}`;
+                            linkIcon.addEventListener('click', function(e) {
+                                e.stopPropagation(); // Prevent checkbox toggle when clicking link
+                            });
+                            
+                            nameContainer.appendChild(name);
+                            nameContainer.appendChild(linkIcon);
                             
                             // Create tooltip with description
                             const tooltip = document.createElement('div');
                             tooltip.className = 'service-tooltip';
                             tooltip.textContent = descriptions[serviceId] || 'Access website and services';
                             
+                            // Add secondary services info to tooltip if this is a combined service
+                            if (serviceCombineMap[serviceId]) {
+                                const combinedNames = serviceCombineMap[serviceId]
+                                    .filter(id => cidrs[id])
+                                    .map(id => id);
+                                
+                                if (combinedNames.length > 0) {
+                                    tooltip.textContent += ` (Includes: ${combinedNames.join(', ')})`;
+                                }
+                            }
+                            
                             // Add service elements to the service div
                             serviceDiv.appendChild(checkbox);
                             serviceDiv.appendChild(favicon);
-                            serviceDiv.appendChild(name);
+                            serviceDiv.appendChild(nameContainer);
                             serviceDiv.appendChild(tooltip);
                             
                             // Add service div to service item
@@ -468,35 +502,13 @@
                             
                             // Make div clickable for checkbox
                             serviceDiv.addEventListener('click', function(e) {
-                                if (e.target !== checkbox) {
+                                if (e.target !== checkbox && !e.target.closest('a')) {
                                     checkbox.checked = !checkbox.checked;
                                     if (checkbox.checked) {
                                         serviceItem.classList.add('selected');
                                     } else {
                                         serviceItem.classList.remove('selected');
                                     }
-                                }
-                            });
-                            
-                            // Add hover effect for CTRL key
-                            serviceDiv.addEventListener('mouseenter', function() {
-                                hoveredService = name;
-                                if (ctrlPressed) {
-                                    name.classList.add('link-active');
-                                }
-                            });
-                            
-                            serviceDiv.addEventListener('mouseleave', function() {
-                                hoveredService = null;
-                                name.classList.remove('link-active');
-                            });
-                            
-                            // Add click handler for opening URL with CTRL
-                            name.addEventListener('click', function(e) {
-                                if (ctrlPressed) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    window.open(this.dataset.url, '_blank');
                                 }
                             });
                             

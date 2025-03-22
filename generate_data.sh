@@ -46,76 +46,48 @@ cat > "$OUTPUT_FILE" << EOF
 }
 EOF
 
-# Function to find service file
-find_service_file() {
-    local service_id="$1"
-    local config_dir="$2"
-    
-    # Try exact match first
-    local file=$(find "$config_dir" -name "${service_id}.json" -type f)
-    if [ -n "$file" ]; then
-        echo "$file"
-        return 0
-    fi
-    
-    # Try without domain suffix
-    local base_name=$(echo "$service_id" | sed 's/\.[^.]*$//')
-    file=$(find "$config_dir" -name "${base_name}.json" -type f)
-    if [ -n "$file" ]; then
-        echo "$file"
-        return 0
-    fi
-    
-    # Try with just the first part of the domain
-    local first_part=$(echo "$service_id" | cut -d. -f1)
-    file=$(find "$config_dir" -name "${first_part}.json" -type f)
-    if [ -n "$file" ]; then
-        echo "$file"
-        return 0
-    fi
-    
-    # Try case-insensitive search
-    file=$(find "$config_dir" -iname "${service_id}.json" -type f)
-    if [ -n "$file" ]; then
-        echo "$file"
-        return 0
-    fi
-    
-    return 1
-}
+# First, get all service IDs from categories.json
+echo "Loading service mappings..."
+SERVICE_IDS=$(jq -r '.categories[].services[]' "$CATEGORIES_FILE")
 
-# Process each category from categories.json
-jq -r '.categories | to_entries[] | .key as $cat | .value.services[] | [$cat, .]' "$CATEGORIES_FILE" | while read -r category service_id; do
-    # Find the service file in the config directory
-    service_file=$(find_service_file "$service_id" "$CONFIG_DIR")
+# Process each service file in the config directory
+echo "Processing service files..."
+find "$CONFIG_DIR" -name "*.json" -type f | while read -r service_file; do
+    # Get service ID from filename
+    service_id=$(basename "$service_file" .json)
     
-    if [ -n "$service_file" ]; then
-        echo "Processing service: $service_id in category: $category"
-        echo "  Found file: $service_file"
+    # Skip if service is not in our categories
+    if ! echo "$SERVICE_IDS" | grep -q "^$service_id$"; then
+        echo "Skipping unknown service: $service_id"
+        continue
+    fi
+    
+    echo "Processing service: $service_id"
+    
+    # Extract CIDRs from service file
+    cidrs=$(jq -c '.cidr4 // []' "$service_file")
+    
+    # Skip if no CIDRs
+    if [ "$cidrs" = "[]" ] || [ -z "$cidrs" ]; then
+        echo "  No CIDRs found, skipping"
+        continue
+    fi
+    
+    # Find which category this service belongs to
+    category=$(jq -r --arg id "$service_id" '.categories | to_entries[] | select(.value.services[] | contains($id)) | .key' "$CATEGORIES_FILE")
+    
+    if [ -n "$category" ]; then
+        echo "  Found in category: $category"
         
-        # Extract CIDRs from service file
-        cidrs=$(jq -c '.cidr4 // []' "$service_file")
-        
-        # Skip if no CIDRs
-        if [ "$cidrs" = "[]" ] || [ -z "$cidrs" ]; then
-            echo "  No CIDRs found, skipping"
-            continue
-        fi
-        
-        # Add service to JSON
+        # Add service to JSON with CIDRs only
         jq --arg cat "$category" \
            --arg id "$service_id" \
-           --arg url "https://$service_id" \
            --argjson cidrs "$cidrs" \
-           '.categories[$cat].services[$id] = {"url": $url, "cidrs": $cidrs}' \
+           '.categories[$cat].services[$id] = {"cidrs": $cidrs}' \
            "$OUTPUT_FILE" > "$OUTPUT_FILE.tmp"
         mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
     else
-        echo "Warning: Service file not found for $service_id"
-        echo "  Tried to find: ${service_id}.json"
-        echo "  In directory: $CONFIG_DIR"
-        echo "  Available files:"
-        find "$CONFIG_DIR" -name "*.json" -type f | sed 's/^/    /'
+        echo "  Warning: Service not found in any category"
     fi
 done
 

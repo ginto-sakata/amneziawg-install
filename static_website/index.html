@@ -497,44 +497,18 @@
                     const urlObj = new URL(serviceData.url);
                     const hostname = urlObj.hostname;
                     
-                    // Try different favicon sources in order of preference
-                    const faviconSources = [
-                        `https://${hostname}/favicon.ico`,
-                        `https://${hostname}/apple-touch-icon.png`,
-                        `https://${hostname}/apple-touch-icon-precomposed.png`,
-                        `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`,
-                        `https://favicon.yandex.net/favicon/${hostname}`,
-                        `https://icon.horse/icon/${hostname}`
-                    ];
+                    // Use Google's favicon service as the primary source
+                    faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
                     
-                    // Create a promise to try loading favicons
-                    const loadFavicon = (url) => {
-                        return new Promise((resolve, reject) => {
-                            const img = new Image();
-                            img.onload = () => resolve(url);
-                            img.onerror = () => reject();
-                            img.src = url;
-                        });
+                    // Add error handler for the icon
+                    icon.onerror = function() {
+                        // If Google's service fails, try the direct favicon
+                        this.src = `https://${hostname}/favicon.ico`;
+                        this.onerror = function() {
+                            // If direct favicon fails, use the default icon
+                            this.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
+                        };
                     };
-                    
-                    // Try each source until one works
-                    Promise.race(faviconSources.map(url => loadFavicon(url)))
-                        .then(url => {
-                            const icon = document.querySelector(`#${checkbox.id}`).nextElementSibling;
-                            if (icon) {
-                                icon.src = url;
-                            }
-                        })
-                        .catch(() => {
-                            // If all sources fail, use the default icon
-                            const icon = document.querySelector(`#${checkbox.id}`).nextElementSibling;
-                            if (icon) {
-                                icon.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
-                            }
-                        });
-                    
-                    // Set initial favicon URL
-                    faviconUrl = faviconSources[0];
                 } catch (e) {
                     faviconUrl = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
                 }
@@ -547,7 +521,39 @@
                 
                 // Simplify service name by removing common suffixes and formatting
                 let displayName = serviceName
-                    .replace(/\.com$|\.org$|\.net$|\.io$|\.ai$|\.tv$|\.ru$|\.eu$|\.ag$|\.fm$|\.club$|\.live$|\.pro$|\.online$|\.info$/i, '')
+                    // First, handle special cases
+                    .replace(/^BestchangeRu$/, 'BestChange')
+                    .replace(/^LostfilmTv$/, 'LostFilm.TV')
+                    .replace(/^EuronewsCom$/, 'Euronews')
+                    .replace(/^SpotifyCom$/, 'Spotify')
+                    .replace(/^NetflixCom$/, 'Netflix')
+                    .replace(/^YoutubeCom$/, 'YouTube')
+                    .replace(/^DiscordCom$/, 'Discord')
+                    .replace(/^TelegramOrg$/, 'Telegram')
+                    .replace(/^WhatsappCom$/, 'WhatsApp')
+                    .replace(/^MessengerCom$/, 'Messenger')
+                    .replace(/^ViberCom$/, 'Viber')
+                    .replace(/^SignalOrg$/, 'Signal')
+                    .replace(/^ProtonMe$/, 'Proton')
+                    .replace(/^MediumCom$/, 'Medium')
+                    .replace(/^NotionSo$/, 'Notion')
+                    .replace(/^MiroCom$/, 'Miro')
+                    .replace(/^ZapierCom$/, 'Zapier')
+                    .replace(/^ChessCom$/, 'Chess')
+                    .replace(/^GrammarlyCom$/, 'Grammarly')
+                    .replace(/^DuolingoCom$/, 'Duolingo')
+                    .replace(/^PixivNet$/, 'Pixiv')
+                    .replace(/^CrunchyrollCom$/, 'Crunchyroll')
+                    .replace(/^PatreonCom$/, 'Patreon')
+                    .replace(/^XCom$/, 'X (Twitter)')
+                    .replace(/^QuoraCom$/, 'Quora')
+                    .replace(/^InstagramCom$/, 'Instagram')
+                    .replace(/^TiktokCom$/, 'TikTok')
+                    .replace(/^FacebookCom$/, 'Facebook')
+                    .replace(/^LinkedinCom$/, 'LinkedIn')
+                    .replace(/^SoundcloudCom$/, 'SoundCloud')
+                    // Then handle general cases
+                    .replace(/\.(com|org|net|io|ai|tv|ru|eu|ag|fm|club|live|pro|online|info)$/i, '')
                     .replace(/\./g, ' ')
                     .replace(/\b\w/g, l => l.toUpperCase())
                     .replace(/\s+/g, ' ')

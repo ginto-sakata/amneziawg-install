@@ -110,6 +110,11 @@
             height: 16px;
             margin-right: 8px;
             object-fit: contain;
+            vertical-align: middle;
+            opacity: 0.8;
+        }
+        .service:hover .service-icon {
+            opacity: 1;
         }
         .service-checkbox {
             margin-right: 8px;
@@ -118,11 +123,15 @@
         .service-name {
             font-size: 14px;
             position: relative;
+            cursor: default;
         }
         .service-name.link-active {
             color: #2196F3;
             text-decoration: underline;
             cursor: pointer;
+            background-color: rgba(33, 150, 243, 0.1);
+            padding: 2px 4px;
+            border-radius: 3px;
         }
         .service-tooltip {
             visibility: hidden;
@@ -262,26 +271,49 @@
             const selectAllBtn = document.getElementById('select-all-btn');
             const deselectAllBtn = document.getElementById('deselect-all-btn');
             
-            // Track if Ctrl key is pressed
+            // Track if Ctrl key is pressed and currently hovered service
             let ctrlPressed = false;
+            let hoveredService = null;
             
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Control') {
                     ctrlPressed = true;
-                    document.querySelectorAll('.service-name').forEach(el => {
-                        if (el.dataset.url) {
-                            el.classList.add('link-active');
-                        }
-                    });
+                    if (hoveredService) {
+                        hoveredService.classList.add('link-active');
+                    }
                 }
             });
             
             document.addEventListener('keyup', function(e) {
                 if (e.key === 'Control') {
                     ctrlPressed = false;
-                    document.querySelectorAll('.service-name').forEach(el => {
-                        el.classList.remove('link-active');
-                    });
+                    if (hoveredService) {
+                        hoveredService.classList.remove('link-active');
+                    }
+                }
+            });
+            
+            // Add hover event listeners to service names
+            document.addEventListener('mouseover', function(e) {
+                if (e.target.classList.contains('service-name')) {
+                    hoveredService = e.target;
+                    if (ctrlPressed) {
+                        e.target.classList.add('link-active');
+                    }
+                }
+            });
+            
+            document.addEventListener('mouseout', function(e) {
+                if (e.target.classList.contains('service-name')) {
+                    hoveredService = null;
+                    e.target.classList.remove('link-active');
+                }
+            });
+            
+            // Add click handler for service names
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('service-name') && ctrlPressed) {
+                    window.open(e.target.dataset.url, '_blank');
                 }
             });
             
@@ -407,7 +439,7 @@
                 // Save category services in our data structure
                 servicesData[formattedCategoryName] = { services: {} };
                 
-                // Priority services to show first (YouTube, Netflix, etc.)
+                // Priority services to show first (YouTube, Discord, Telegram, etc.)
                 const priorityServices = ['YouTube', 'Discord', 'Telegram', 'Netflix', 'Spotify'];
                 
                 // Get and sort services
@@ -459,13 +491,51 @@
                 checkbox.dataset.category = category;
                 checkbox.dataset.service = serviceName;
                 
-                // Create favicon URL - using Google's favicon service
+                // Create favicon URL with better fallback strategy
                 let faviconUrl = '';
                 try {
                     const urlObj = new URL(serviceData.url);
-                    faviconUrl = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=32`;
+                    const hostname = urlObj.hostname;
+                    
+                    // Try different favicon sources in order of preference
+                    const faviconSources = [
+                        `https://${hostname}/favicon.ico`,
+                        `https://${hostname}/apple-touch-icon.png`,
+                        `https://${hostname}/apple-touch-icon-precomposed.png`,
+                        `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`,
+                        `https://favicon.yandex.net/favicon/${hostname}`,
+                        `https://icon.horse/icon/${hostname}`
+                    ];
+                    
+                    // Create a promise to try loading favicons
+                    const loadFavicon = (url) => {
+                        return new Promise((resolve, reject) => {
+                            const img = new Image();
+                            img.onload = () => resolve(url);
+                            img.onerror = () => reject();
+                            img.src = url;
+                        });
+                    };
+                    
+                    // Try each source until one works
+                    Promise.race(faviconSources.map(url => loadFavicon(url)))
+                        .then(url => {
+                            const icon = document.querySelector(`#${checkbox.id}`).nextElementSibling;
+                            if (icon) {
+                                icon.src = url;
+                            }
+                        })
+                        .catch(() => {
+                            // If all sources fail, use the default icon
+                            const icon = document.querySelector(`#${checkbox.id}`).nextElementSibling;
+                            if (icon) {
+                                icon.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
+                            }
+                        });
+                    
+                    // Set initial favicon URL
+                    faviconUrl = faviconSources[0];
                 } catch (e) {
-                    // Fallback if URL is invalid
                     faviconUrl = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
                 }
                 
@@ -474,21 +544,19 @@
                 icon.src = faviconUrl;
                 icon.alt = serviceName;
                 icon.loading = 'lazy';
-                icon.onerror = function() {
-                    this.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
-                };
+                
+                // Simplify service name by removing common suffixes and formatting
+                let displayName = serviceName
+                    .replace(/\.com$|\.org$|\.net$|\.io$|\.ai$|\.tv$|\.ru$|\.eu$|\.ag$|\.fm$|\.club$|\.live$|\.pro$|\.online$|\.info$/i, '')
+                    .replace(/\./g, ' ')
+                    .replace(/\b\w/g, l => l.toUpperCase())
+                    .replace(/\s+/g, ' ')
+                    .trim();
                 
                 const name = document.createElement('span');
                 name.className = 'service-name';
-                name.textContent = serviceName;
+                name.textContent = displayName;
                 name.dataset.url = serviceData.url;
-                
-                // Add click handler for the name (only works when CTRL is pressed)
-                name.addEventListener('click', function(e) {
-                    if (ctrlPressed) {
-                        window.open(serviceData.url, '_blank');
-                    }
-                });
                 
                 // Create tooltip with description
                 const tooltip = document.createElement('div');

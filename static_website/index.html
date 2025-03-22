@@ -292,7 +292,7 @@
                 
                 try {
                     // Fetch the data.json file
-                    const response = await fetch('./data.json.transformed');
+                    const response = await fetch(window.location.href.endsWith('/') ? 'data.json.transformed' : './data.json.transformed');
                     if (!response.ok) {
                         // Try original data.json as fallback
                         const fallbackResponse = await fetch('./data.json');

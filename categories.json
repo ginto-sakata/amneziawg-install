@@ -7,7 +7,23 @@
                 "netflix.com",
                 "spotify.com",
                 "crunchyroll.com",
-                "pixiv.net"
+                "pixiv.net",
+                "x.com",
+                "kino.pub",
+                "doramy.club",
+                "filmix.fm",
+                "kinobase.org",
+                "themoviedb.org",
+                "kinovod.pro",
+                "dorama.live",
+                "lostfilm.tv",
+                "hdrezka.ag",
+                "zeflix.online",
+                "kinozal.tv",
+                "currenttime.tv",
+                "kavkaz-uzel.eu",
+                "newstudio.tv",
+                "amedia.site"
             ]
         },
         "messengers": {
@@ -34,7 +50,8 @@
                 "quora.com",
                 "soundcloud.com",
                 "medium.com",
-                "patreon.com"
+                "patreon.com",
+                "babook.org"
             ]
         },
         "news": {
@@ -46,7 +63,45 @@
                 "ovd.info",
                 "thevillage.ru",
                 "moscowtimes.ru",
-                "novayagazeta.ru"
+                "novayagazeta.ru",
+                "bellingcat.com",
+                "tvrain.ru",
+                "memohrc.org",
+                "meduza.io",
+                "korrespondent.net",
+                "gordonua.com",
+                "golosameriki.com",
+                "holod.media",
+                "paperpaper.ru",
+                "tayga.info",
+                "echofm.online",
+                "svoboda.org",
+                "exler.ru",
+                "verstka.media",
+                "vot-tak.tv",
+                "proekt.media",
+                "cherta.media",
+                "semnasem.org",
+                "navalny.com",
+                "polit.ru",
+                "kasparov.ru",
+                "unian.net",
+                "krymr.com",
+                "agents.media",
+                "euronews.com",
+                "ej.ru",
+                "istories.media",
+                "newtimes.ru",
+                "colta.ru",
+                "radiosvoboda.org",
+                "agentura.ru",
+                "ehorussia.com",
+                "thetruestory.news",
+                "doxa.team",
+                "theins.ru",
+                "gulagu.net",
+                "zona.media",
+                "the-village.ru"
             ]
         },
         "ai": {
@@ -55,7 +110,8 @@
                 "chatgpt.com",
                 "claude.ai",
                 "grammarly.com",
-                "jetbrains@grazie.ai"
+                "jetbrains@grazie.ai",
+                "copilot"
             ]
         },
         "entertainment": {
@@ -65,7 +121,11 @@
                 "duolingo.com",
                 "notion.so",
                 "miro.com",
-                "zapier.com"
+                "zapier.com",
+                "wikiart.org",
+                "younettranslate.com",
+                "ficbook.net",
+                "infinitenovel.eu"
             ]
         },
         "anime": {
@@ -75,13 +135,29 @@
                 "nyaa.si",
                 "nyaa.land",
                 "danbooru.donmai.us",
-                "gelbooru.com"
+                "gelbooru.com",
+                "animego.org",
+                "jut.su",
+                "kodik.info",
+                "anidub.pro",
+                "mangahub.ru",
+                "bato.to",
+                "mangapark.net",
+                "yummyanime.tv",
+                "kara.su",
+                "rulate.ru",
+                "hentaichan.live",
+                "vndb.org"
             ]
         },
         "education": {
             "name": "Education",
             "services": [
-                "duolingo.com"
+                "duolingo.com",
+                "refactoring.guru",
+                "znanija.com",
+                "mrakopedia.net",
+                "naukri.com"
             ]
         },
         "tools": {
@@ -92,7 +168,17 @@
                 "jetbrains.com",
                 "jetbrains@cdn",
                 "linktr.ee",
-                "trainingpeaks.com"
+                "trainingpeaks.com",
+                "prostovpn.org",
+                "proxyline.net",
+                "basecamp.com",
+                "canva.com",
+                "tuta.com",
+                "whoop.com",
+                "elevenlabs.io",
+                "make.com",
+                "strava.com",
+                "bestchange.ru"
             ]
         },
         "adult": {
@@ -102,23 +188,42 @@
                 "xhamster.com",
                 "xhamsterlive.com",
                 "xnxx.ru.com",
-                "xvideos.com"
+                "xvideos.com",
+                "redgifs.com",
+                "pornolab.net",
+                "rule34.xxx",
+                "beeg.com",
+                "reddxxx.com",
+                "redtube.com",
+                "hqporner.com"
             ]
         },
         "torrent": {
             "name": "Torrent Sites",
             "services": [
-                "1337x.to",
-                "thepiratebay.org",
                 "rutracker.org",
                 "rutor.info",
-                "nnmclub.to"
+                "thepiratebay.org",
+                "1337x.to",
+                "nnmclub.to",
+                "booktracker.org",
+                "rustorka.com",
+                "filmitorrent.net",
+                "torrent.by",
+                "kinozal.me"
             ]
         },
         "shop": {
             "name": "Shopping",
             "services": [
                 "ralphlauren.eu"
+            ]
+        },
+        "casino": {
+            "name": "Casino",
+            "services": [
+                "vavada.com",
+                "7k.casino"
             ]
         }
     },
@@ -134,6 +239,7 @@
         "tools",
         "adult",
         "torrent",
-        "shop"
+        "shop",
+        "casino"
     ]
 } 

@@ -300,25 +300,39 @@
                 categoriesContainer.innerHTML = '';
                 
                 try {
-                    // Load descriptions first
-                    const descResponse = await fetch('./descriptions.json');
-                    if (!descResponse.ok) {
-                        throw new Error(`Failed to load descriptions: ${descResponse.status} ${descResponse.statusText}`);
-                    }
-                    descriptions = await descResponse.json();
+                    // Load all required data in parallel
+                    const [categoriesResponse, servicesResponse, descriptionsResponse, cidrsResponse] = await Promise.all([
+                        fetch('./categories.json'),
+                        fetch('./services.json'),
+                        fetch('./descriptions.json'),
+                        fetch('./cidrs.json')
+                    ]);
                     
-                    // Then load the main data
-                    const response = await fetch(window.location.href.endsWith('/') ? 'data.json.transformed' : './data.json.transformed');
-                    if (!response.ok) {
-                        // Try original data.json as fallback
-                        const fallbackResponse = await fetch('./data.json');
-                        if (!fallbackResponse.ok) {
-                            throw new Error(`Failed to load data: ${response.status} ${response.statusText}`);
-                        }
-                        return await fallbackResponse.json();
+                    if (!categoriesResponse.ok) {
+                        throw new Error(`Failed to load categories: ${categoriesResponse.status}`);
+                    }
+                    if (!servicesResponse.ok) {
+                        throw new Error(`Failed to load services: ${servicesResponse.status}`);
+                    }
+                    if (!descriptionsResponse.ok) {
+                        throw new Error(`Failed to load descriptions: ${descriptionsResponse.status}`);
+                    }
+                    if (!cidrsResponse.ok) {
+                        throw new Error(`Failed to load CIDRs: ${cidrsResponse.status}`);
                     }
                     
-                    return await response.json();
+                    const categories = await categoriesResponse.json();
+                    const services = await servicesResponse.json();
+                    descriptions = await descriptionsResponse.json();
+                    const cidrs = await cidrsResponse.json();
+                    
+                    // Combine all data
+                    return {
+                        categories: categories.categories,
+                        services: services,
+                        descriptions: descriptions,
+                        cidrs: cidrs.services
+                    };
                 } catch (error) {
                     console.error('Error loading data:', error);
                     categoriesContainer.innerHTML = `<div>Error loading services: ${error.message}. Please try again.</div>`;
@@ -330,75 +344,7 @@
             
             // Function to format service ID into display name
             function formatDisplayName(serviceId) {
-                // Handle special cases first
-                const specialCases = {
-                    'chatgpt.com': 'ChatGPT',
-                    'claude.ai': 'Claude',
-                    'x.com': 'X (Twitter)',
-                    'tiktok.com': 'TikTok',
-                    'linkedin.com': 'LinkedIn',
-                    'whatsapp.com': 'WhatsApp',
-                    'instagram.com': 'Instagram',
-                    'facebook.com': 'Facebook',
-                    'youtube.com': 'YouTube',
-                    'discord.com': 'Discord',
-                    'discord.gg': 'Discord',
-                    'discord.media': 'Discord',
-                    'telegram.org': 'Telegram',
-                    'messenger.com': 'Messenger',
-                    'viber.com': 'Viber',
-                    'signal.org': 'Signal',
-                    'proton.me': 'Proton',
-                    'medium.com': 'Medium',
-                    'notion.so': 'Notion',
-                    'miro.com': 'Miro',
-                    'zapier.com': 'Zapier',
-                    'chess.com': 'Chess',
-                    'grammarly.com': 'Grammarly',
-                    'duolingo.com': 'Duolingo',
-                    'pixiv.net': 'Pixiv',
-                    'crunchyroll.com': 'Crunchyroll',
-                    'patreon.com': 'Patreon',
-                    'quora.com': 'Quora',
-                    'soundcloud.com': 'SoundCloud',
-                    'bbc.com': 'BBC',
-                    'dw.com': 'DW',
-                    'hrw.org': 'HRW',
-                    'ovd.info': 'OVD-Info',
-                    'thevillage.ru': 'The Village',
-                    'moscowtimes.ru': 'Moscow Times',
-                    'novayagazeta.ru': 'Novaya Gazeta',
-                    'anilibria.tv': 'Anilibria.TV',
-                    'nyaa.si': 'Nyaa.si',
-                    'nyaa.land': 'Nyaa.land',
-                    'danbooru.donmai.us': 'Danbooru',
-                    'gelbooru.com': 'Gelbooru',
-                    'pornhub.com': 'PornHub',
-                    'xhamster.com': 'XHamster',
-                    'xhamsterlive.com': 'XHamster Live',
-                    'xnxx.ru.com': 'XNXX',
-                    'xvideos.com': 'XVideos',
-                    '10minutemail.com': '10MinuteMail',
-                    'connect.garmin.com': 'Garmin Connect',
-                    'jetbrains.com': 'JetBrains',
-                    'jetbrains@cdn': 'JetBrains CDN',
-                    'jetbrains@grazie.ai': 'JetBrains Grazie',
-                    'linktr.ee': 'Linktree',
-                    'trainingpeaks.com': 'TrainingPeaks',
-                    '1337x.to': '1337x',
-                    'thepiratebay.org': 'The Pirate Bay',
-                    'rutracker.org': 'RuTracker',
-                    'rutor.info': 'Rutor',
-                    'nnmclub.to': 'NNM-Club',
-                    'ralphlauren.eu': 'Ralph Lauren'
-                };
-                
-                if (specialCases[serviceId]) {
-                    return specialCases[serviceId];
-                }
-                
-                // Handle general case
-                return serviceId
+                return services[serviceId] || serviceId
                     .replace(/\.(com|org|net|io|ai|tv|ru|eu|ag|fm|club|live|pro|online|info)$/i, '')
                     .replace(/\./g, ' ')
                     .replace(/\b\w/g, l => l.toUpperCase())
@@ -413,10 +359,10 @@
             // Function to render all categories and services
             async function renderCategoriesAndServices() {
                 try {
-                    const data = await loadServiceData();
+                    const { categories, services, descriptions, cidrs } = await loadServiceData();
                     
                     // Sort categories according to priority
-                    const sortedCategories = Object.keys(data.categories).sort((a, b) => {
+                    const sortedCategories = Object.keys(categories).sort((a, b) => {
                         const indexA = categoryPriority.indexOf(a);
                         const indexB = categoryPriority.indexOf(b);
                         
@@ -436,8 +382,8 @@
                     
                     // Render each category
                     for (const category of sortedCategories) {
-                        const categoryData = data.categories[category];
-                        const formattedCategoryName = category.charAt(0).toUpperCase() + category.slice(1);
+                        const categoryData = categories[category];
+                        const formattedCategoryName = categoryData.name || category.charAt(0).toUpperCase() + category.slice(1);
                         
                         // Create category container
                         const categoryDiv = document.createElement('div');
@@ -488,23 +434,8 @@
                         // Save category services in our data structure
                         servicesData[formattedCategoryName] = { services: {} };
                         
-                        // Priority services to show first
-                        const priorityServices = [
-                            'youtube.com', 'discord.com', 'telegram.org', 'netflix.com', 'spotify.com',
-                            'chatgpt.com', 'claude.ai', 'x.com', 'instagram.com', 'facebook.com',
-                            'whatsapp.com', 'signal.org', 'bbc.com', 'dw.com', 'hrw.org',
-                            'ovd.info', 'thevillage.ru', 'moscowtimes.ru', 'novayagazeta.ru',
-                            'anilibria.tv', 'nyaa.si', 'nyaa.land',
-                            'danbooru.donmai.us', 'gelbooru.com',
-                            'pornhub.com', 'xhamster.com', 'xhamsterlive.com', 'xnxx.ru.com', 'xvideos.com',
-                            '10minutemail.com', 'connect.garmin.com', 'jetbrains.com', 'jetbrains@cdn',
-                            'jetbrains@grazie.ai', 'linktr.ee', 'trainingpeaks.com',
-                            '1337x.to', 'thepiratebay.org', 'rutracker.org', 'rutor.info', 'nnmclub.to',
-                            'ralphlauren.eu'
-                        ];
-                        
                         // Get and sort services
-                        let serviceEntries = Object.entries(categoryData.services);
+                        let serviceEntries = categoryData.services.map(serviceId => [serviceId, cidrs[serviceId]]);
                         
                         // Sort services: priority services first, then alphabetically
                         serviceEntries.sort((a, b) => {
@@ -524,6 +455,8 @@
                         
                         // Process services in the category
                         for (const [serviceId, serviceData] of serviceEntries) {
+                            if (!serviceData) continue; // Skip if no CIDRs found
+                            
                             // Create service container
                             const serviceDiv = document.createElement('li');
                             serviceDiv.className = 'service';
@@ -553,7 +486,7 @@
                             const name = document.createElement('span');
                             name.className = 'service-name';
                             name.textContent = formatDisplayName(serviceId);
-                            name.dataset.url = serviceData.url;
+                            name.dataset.url = `https://${serviceId}`;
                             
                             // Create tooltip with description
                             const tooltip = document.createElement('div');

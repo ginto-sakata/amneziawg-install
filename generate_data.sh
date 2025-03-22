@@ -2,10 +2,8 @@
 
 # Directory containing the IP list configuration files
 CONFIG_DIR="${1:-./iplist/config}"
-OUTPUT_FILE="${2:-./static_website/data.json}"
-DESCRIPTIONS_FILE="${3:-./descriptions.json}"
-SERVICES_FILE="${4:-./services.json}"
-CATEGORIES_FILE="${5:-./categories.json}"
+OUTPUT_FILE="${2:-./static_website/cidrs.json}"
+SERVICES_FILE="${3:-./services.json}"
 
 echo "Generating data from $CONFIG_DIR to $OUTPUT_FILE..."
 
@@ -13,18 +11,8 @@ echo "Generating data from $CONFIG_DIR to $OUTPUT_FILE..."
 mkdir -p $(dirname "$OUTPUT_FILE")
 
 # Check if required files exist
-if [ ! -f "$DESCRIPTIONS_FILE" ]; then
-    echo "Error: descriptions.json not found"
-    exit 1
-fi
-
 if [ ! -f "$SERVICES_FILE" ]; then
     echo "Error: services.json not found"
-    exit 1
-fi
-
-if [ ! -f "$CATEGORIES_FILE" ]; then
-    echo "Error: categories.json not found"
     exit 1
 fi
 
@@ -41,7 +29,7 @@ fi
 # Create initial JSON structure
 cat > "$OUTPUT_FILE" << EOF
 {
-  "categories": {
+  "services": {
   }
 }
 EOF
@@ -73,22 +61,12 @@ find "$CONFIG_DIR" -name "*.json" -type f | while read -r service_file; do
         continue
     fi
     
-    # Find which category this service belongs to
-    category=$(jq -r --arg id "$service_id" '.categories | to_entries[] | select(.value.services[] | contains($id)) | .key' "$CATEGORIES_FILE")
-    
-    if [ -n "$category" ]; then
-        echo "  Found in category: $category"
-        
-        # Add service to JSON with CIDRs only
-        jq --arg cat "$category" \
-           --arg id "$service_id" \
-           --argjson cidrs "$cidrs" \
-           '.categories[$cat].services[$id] = {"cidrs": $cidrs}' \
-           "$OUTPUT_FILE" > "$OUTPUT_FILE.tmp"
-        mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
-    else
-        echo "  Warning: Service not found in any category"
-    fi
+    # Add service to JSON with CIDRs only
+    jq --arg id "$service_id" \
+       --argjson cidrs "$cidrs" \
+       '.services[$id] = {"cidrs": $cidrs}' \
+       "$OUTPUT_FILE" > "$OUTPUT_FILE.tmp"
+    mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
 done
 
 echo "Data generation complete. File saved to: $OUTPUT_FILE"

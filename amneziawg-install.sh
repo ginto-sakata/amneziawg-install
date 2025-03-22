@@ -1405,9 +1405,9 @@ function startWebServer() {
     # Make the script executable
     chmod +x "${WEBSITE_DIR}/generate_data.sh"
     
-    # Generate the data.json file
-    echo -e "${GREEN}Generating service data...${NC}"
-    "${WEBSITE_DIR}/generate_data.sh" "${IPLIST_DIR}" "${WEBSITE_DIR}/data.json"
+    # Generate the cidrs.json file
+    echo "Generating CIDR data..."
+    "${WEBSITE_DIR}/generate_data.sh" "${IPLIST_DIR}" "${WEBSITE_DIR}"
     
     # Create a simple web server using Python or PHP
     echo -e "${GREEN}Starting web server...${NC}"

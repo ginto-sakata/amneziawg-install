@@ -20,10 +20,16 @@ for file in services.json categories.json descriptions.json; do
     fi
 done
 
-# Check if iplist directory exists
-if [ ! -d "iplist" ]; then
-    echo "Error: iplist directory not found"
-    exit 1
+# Clone/update iplist repository
+echo "Cloning or updating iplist repository..."
+if [ -d "iplist" ]; then
+    (cd iplist && git pull)
+else
+    git clone -n --depth=1 --filter=tree:0 https://github.com/rekryt/iplist
+    cd iplist
+    git sparse-checkout set --no-cone /config
+    git checkout
+    cd ..
 fi
 
 # Generate CIDR data and copy required files

@@ -243,6 +243,7 @@
     <script>
         // Store loaded service data
         const servicesData = {};
+        let descriptions = {};
         
         // Category display order - prioritize certain categories
         const categoryPriority = [
@@ -293,37 +294,20 @@
                 }
             });
             
-            // Add hover event listeners to service names
-            document.addEventListener('mouseover', function(e) {
-                if (e.target.classList.contains('service-name')) {
-                    hoveredService = e.target;
-                    if (ctrlPressed) {
-                        e.target.classList.add('link-active');
-                    }
-                }
-            });
-            
-            document.addEventListener('mouseout', function(e) {
-                if (e.target.classList.contains('service-name')) {
-                    hoveredService = null;
-                    e.target.classList.remove('link-active');
-                }
-            });
-            
-            // Add click handler for service names
-            document.addEventListener('click', function(e) {
-                if (e.target.classList.contains('service-name') && ctrlPressed) {
-                    window.open(e.target.dataset.url, '_blank');
-                }
-            });
-            
-            // Function to load service data from JSON file
+            // Function to load service data
             async function loadServiceData() {
                 loader.style.display = 'block';
                 categoriesContainer.innerHTML = '';
                 
                 try {
-                    // Fetch the data.json file
+                    // Load descriptions first
+                    const descResponse = await fetch('./descriptions.json');
+                    if (!descResponse.ok) {
+                        throw new Error(`Failed to load descriptions: ${descResponse.status} ${descResponse.statusText}`);
+                    }
+                    descriptions = await descResponse.json();
+                    
+                    // Then load the main data
                     const response = await fetch(window.location.href.endsWith('/') ? 'data.json.transformed' : './data.json.transformed');
                     if (!response.ok) {
                         // Try original data.json as fallback
@@ -344,22 +328,97 @@
                 }
             }
             
+            // Function to format service ID into display name
+            function formatDisplayName(serviceId) {
+                // Handle special cases first
+                const specialCases = {
+                    'chatgpt.com': 'ChatGPT',
+                    'claude.ai': 'Claude',
+                    'x.com': 'X (Twitter)',
+                    'tiktok.com': 'TikTok',
+                    'linkedin.com': 'LinkedIn',
+                    'whatsapp.com': 'WhatsApp',
+                    'instagram.com': 'Instagram',
+                    'facebook.com': 'Facebook',
+                    'youtube.com': 'YouTube',
+                    'discord.com': 'Discord',
+                    'discord.gg': 'Discord',
+                    'discord.media': 'Discord',
+                    'telegram.org': 'Telegram',
+                    'messenger.com': 'Messenger',
+                    'viber.com': 'Viber',
+                    'signal.org': 'Signal',
+                    'proton.me': 'Proton',
+                    'medium.com': 'Medium',
+                    'notion.so': 'Notion',
+                    'miro.com': 'Miro',
+                    'zapier.com': 'Zapier',
+                    'chess.com': 'Chess',
+                    'grammarly.com': 'Grammarly',
+                    'duolingo.com': 'Duolingo',
+                    'pixiv.net': 'Pixiv',
+                    'crunchyroll.com': 'Crunchyroll',
+                    'patreon.com': 'Patreon',
+                    'quora.com': 'Quora',
+                    'soundcloud.com': 'SoundCloud',
+                    'bbc.com': 'BBC',
+                    'dw.com': 'DW',
+                    'hrw.org': 'HRW',
+                    'ovd.info': 'OVD-Info',
+                    'thevillage.ru': 'The Village',
+                    'moscowtimes.ru': 'Moscow Times',
+                    'novayagazeta.ru': 'Novaya Gazeta',
+                    'anilibria.tv': 'Anilibria.TV',
+                    'nyaa.si': 'Nyaa.si',
+                    'nyaa.land': 'Nyaa.land',
+                    'danbooru.donmai.us': 'Danbooru',
+                    'gelbooru.com': 'Gelbooru',
+                    'pornhub.com': 'PornHub',
+                    'xhamster.com': 'XHamster',
+                    'xhamsterlive.com': 'XHamster Live',
+                    'xnxx.ru.com': 'XNXX',
+                    'xvideos.com': 'XVideos',
+                    '10minutemail.com': '10MinuteMail',
+                    'connect.garmin.com': 'Garmin Connect',
+                    'jetbrains.com': 'JetBrains',
+                    'jetbrains@cdn': 'JetBrains CDN',
+                    'jetbrains@grazie.ai': 'JetBrains Grazie',
+                    'linktr.ee': 'Linktree',
+                    'trainingpeaks.com': 'TrainingPeaks',
+                    '1337x.to': '1337x',
+                    'thepiratebay.org': 'The Pirate Bay',
+                    'rutracker.org': 'RuTracker',
+                    'rutor.info': 'Rutor',
+                    'nnmclub.to': 'NNM-Club',
+                    'ralphlauren.eu': 'Ralph Lauren'
+                };
+                
+                if (specialCases[serviceId]) {
+                    return specialCases[serviceId];
+                }
+                
+                // Handle general case
+                return serviceId
+                    .replace(/\.(com|org|net|io|ai|tv|ru|eu|ag|fm|club|live|pro|online|info)$/i, '')
+                    .replace(/\./g, ' ')
+                    .replace(/\b\w/g, l => l.toUpperCase())
+                    .replace(/\s+/g, ' ')
+                    .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2')
+                    .replace(/([a-z])([A-Z])/g, '$1 $2')
+                    .replace(/([A-Z])([A-Z])([a-z])/g, '$1 $2 $3')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            }
+            
             // Function to render all categories and services
             async function renderCategoriesAndServices() {
                 try {
                     const data = await loadServiceData();
                     
-                    if (!data.categories || Object.keys(data.categories).length === 0) {
-                        throw new Error('No categories found in data');
-                    }
-                    
-                    // Get all categories and sort them by priority
-                    const categoryEntries = Object.entries(data.categories);
-                    
-                    // Sort categories: first by priority, then alphabetically
-                    categoryEntries.sort((a, b) => {
-                        const indexA = categoryPriority.indexOf(a[0]);
-                        const indexB = categoryPriority.indexOf(b[0]);
+                    // Sort categories according to priority
+                    const sortedCategories = Object.keys(data.categories).sort((a, b) => {
+                        const indexA = categoryPriority.indexOf(a);
+                        const indexB = categoryPriority.indexOf(b);
                         
                         if (indexA !== -1 && indexB !== -1) {
                             return indexA - indexB;
@@ -368,287 +427,191 @@
                         } else if (indexB !== -1) {
                             return 1;
                         } else {
-                            return a[0].localeCompare(b[0]);
+                            return a.localeCompare(b);
                         }
                     });
                     
-                    // Process each category
-                    for (const [categoryName, categoryData] of categoryEntries) {
-                        // Skip empty categories
-                        if (!categoryData.services || Object.keys(categoryData.services).length === 0) {
-                            continue;
+                    // Clear existing content
+                    categoriesContainer.innerHTML = '';
+                    
+                    // Render each category
+                    for (const category of sortedCategories) {
+                        const categoryData = data.categories[category];
+                        const formattedCategoryName = category.charAt(0).toUpperCase() + category.slice(1);
+                        
+                        // Create category container
+                        const categoryDiv = document.createElement('div');
+                        categoryDiv.className = 'category';
+                        
+                        // Create category header
+                        const categoryHeader = document.createElement('div');
+                        categoryHeader.className = 'category-header';
+                        
+                        // Add category title
+                        const categoryTitle = document.createElement('h2');
+                        categoryTitle.textContent = formattedCategoryName;
+                        categoryHeader.appendChild(categoryTitle);
+                        
+                        // Add category actions
+                        const categoryActions = document.createElement('div');
+                        categoryActions.className = 'category-actions';
+                        
+                        // Create select/deselect buttons for this category
+                        const selectAllBtn = document.createElement('button');
+                        selectAllBtn.className = 'category-button';
+                        selectAllBtn.textContent = 'Select All';
+                        
+                        const deselectAllBtn = document.createElement('button');
+                        deselectAllBtn.className = 'category-button';
+                        deselectAllBtn.textContent = 'Deselect All';
+                        
+                        selectAllBtn.addEventListener('click', function() {
+                            const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
+                            checkboxes.forEach(cb => cb.checked = true);
+                        });
+                        
+                        deselectAllBtn.addEventListener('click', function() {
+                            const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
+                            checkboxes.forEach(cb => cb.checked = false);
+                        });
+                        
+                        categoryActions.appendChild(selectAllBtn);
+                        categoryActions.appendChild(deselectAllBtn);
+                        categoryHeader.appendChild(categoryActions);
+                        
+                        categoryDiv.appendChild(categoryHeader);
+                        
+                        // Create services list
+                        const servicesList = document.createElement('ul');
+                        servicesList.className = 'services-list';
+                        
+                        // Save category services in our data structure
+                        servicesData[formattedCategoryName] = { services: {} };
+                        
+                        // Priority services to show first
+                        const priorityServices = [
+                            'youtube.com', 'discord.com', 'telegram.org', 'netflix.com', 'spotify.com',
+                            'chatgpt.com', 'claude.ai', 'x.com', 'instagram.com', 'facebook.com',
+                            'whatsapp.com', 'signal.org', 'bbc.com', 'dw.com', 'hrw.org',
+                            'ovd.info', 'thevillage.ru', 'moscowtimes.ru', 'novayagazeta.ru',
+                            'anilibria.tv', 'nyaa.si', 'nyaa.land',
+                            'danbooru.donmai.us', 'gelbooru.com',
+                            'pornhub.com', 'xhamster.com', 'xhamsterlive.com', 'xnxx.ru.com', 'xvideos.com',
+                            '10minutemail.com', 'connect.garmin.com', 'jetbrains.com', 'jetbrains@cdn',
+                            'jetbrains@grazie.ai', 'linktr.ee', 'trainingpeaks.com',
+                            '1337x.to', 'thepiratebay.org', 'rutracker.org', 'rutor.info', 'nnmclub.to',
+                            'ralphlauren.eu'
+                        ];
+                        
+                        // Get and sort services
+                        let serviceEntries = Object.entries(categoryData.services);
+                        
+                        // Sort services: priority services first, then alphabetically
+                        serviceEntries.sort((a, b) => {
+                            const indexA = priorityServices.indexOf(a[0]);
+                            const indexB = priorityServices.indexOf(b[0]);
+                            
+                            if (indexA !== -1 && indexB !== -1) {
+                                return indexA - indexB;
+                            } else if (indexA !== -1) {
+                                return -1;
+                            } else if (indexB !== -1) {
+                                return 1;
+                            } else {
+                                return a[0].localeCompare(b[0]);
+                            }
+                        });
+                        
+                        // Process services in the category
+                        for (const [serviceId, serviceData] of serviceEntries) {
+                            // Create service container
+                            const serviceDiv = document.createElement('li');
+                            serviceDiv.className = 'service';
+                            
+                            // Create checkbox
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.className = 'service-checkbox';
+                            checkbox.dataset.category = formattedCategoryName;
+                            checkbox.dataset.service = serviceId;
+                            
+                            // Create icon container
+                            const icon = document.createElement('div');
+                            icon.className = 'service-icon';
+                            
+                            // Create favicon
+                            const favicon = document.createElement('img');
+                            favicon.className = 'favicon';
+                            favicon.alt = '';
+                            favicon.src = `https://www.google.com/s2/favicons?domain=${serviceId}&sz=32`;
+                            favicon.onerror = function() {
+                                this.src = `https://www.google.com/s2/favicons?domain=${serviceId}&sz=32`;
+                            };
+                            icon.appendChild(favicon);
+                            
+                            // Create service name
+                            const name = document.createElement('span');
+                            name.className = 'service-name';
+                            name.textContent = formatDisplayName(serviceId);
+                            name.dataset.url = serviceData.url;
+                            
+                            // Create tooltip with description
+                            const tooltip = document.createElement('div');
+                            tooltip.className = 'service-tooltip';
+                            tooltip.textContent = descriptions[serviceId] || 'Access website and services';
+                            
+                            // Add service elements to the service div
+                            serviceDiv.appendChild(checkbox);
+                            serviceDiv.appendChild(icon);
+                            serviceDiv.appendChild(name);
+                            serviceDiv.appendChild(tooltip);
+                            
+                            // Make div clickable for checkbox
+                            serviceDiv.addEventListener('click', function(e) {
+                                if (e.target !== checkbox) {
+                                    checkbox.checked = !checkbox.checked;
+                                }
+                            });
+                            
+                            // Add hover effect for CTRL key
+                            serviceDiv.addEventListener('mouseenter', function() {
+                                hoveredService = this;
+                                if (ctrlPressed) {
+                                    this.classList.add('link-active');
+                                }
+                            });
+                            
+                            serviceDiv.addEventListener('mouseleave', function() {
+                                hoveredService = null;
+                                this.classList.remove('link-active');
+                            });
+                            
+                            // Add click handler for opening URL with CTRL
+                            name.addEventListener('click', function(e) {
+                                if (ctrlPressed) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    window.open(this.dataset.url, '_blank');
+                                }
+                            });
+                            
+                            // Add service to list
+                            servicesList.appendChild(serviceDiv);
+                            
+                            // Save service data
+                            servicesData[formattedCategoryName].services[serviceId] = serviceData;
                         }
                         
-                        createCategoryElement(categoryName, categoryData);
+                        // Add services list to category
+                        categoryDiv.appendChild(servicesList);
+                        
+                        // Add category to container
+                        categoriesContainer.appendChild(categoryDiv);
                     }
                 } catch (error) {
-                    console.error('Error rendering data:', error);
-                    categoriesContainer.innerHTML = `<div>Error: ${error.message}</div>`;
+                    console.error('Error rendering categories:', error);
+                    categoriesContainer.innerHTML = `<div>Error rendering categories: ${error.message}</div>`;
                 }
-            }
-            
-            // Function to create a category element and its services
-            function createCategoryElement(categoryName, categoryData) {
-                // Create category container
-                const categoryDiv = document.createElement('div');
-                categoryDiv.className = 'category';
-                categoryDiv.dataset.category = categoryName;
-                
-                // Create category header
-                const categoryHeader = document.createElement('div');
-                categoryHeader.className = 'category-header';
-                
-                // Format category name
-                const formattedCategoryName = categoryName.charAt(0).toUpperCase() + categoryName.slice(1).replace(/_/g, ' ');
-                
-                const categoryTitle = document.createElement('div');
-                categoryTitle.className = 'category-title';
-                categoryTitle.textContent = formattedCategoryName;
-                categoryHeader.appendChild(categoryTitle);
-                
-                // Category actions
-                const categoryActions = document.createElement('div');
-                categoryActions.className = 'category-actions';
-                
-                const selectAllBtn = document.createElement('button');
-                selectAllBtn.className = 'category-button';
-                selectAllBtn.textContent = 'Select All';
-                selectAllBtn.addEventListener('click', function() {
-                    const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
-                    checkboxes.forEach(cb => cb.checked = true);
-                });
-                
-                const deselectAllBtn = document.createElement('button');
-                deselectAllBtn.className = 'category-button';
-                deselectAllBtn.textContent = 'None';
-                deselectAllBtn.addEventListener('click', function() {
-                    const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
-                    checkboxes.forEach(cb => cb.checked = false);
-                });
-                
-                categoryActions.appendChild(selectAllBtn);
-                categoryActions.appendChild(deselectAllBtn);
-                categoryHeader.appendChild(categoryActions);
-                
-                categoryDiv.appendChild(categoryHeader);
-                
-                // Create services list
-                const servicesList = document.createElement('ul');
-                servicesList.className = 'services-list';
-                
-                // Save category services in our data structure
-                servicesData[formattedCategoryName] = { services: {} };
-                
-                // Priority services to show first (YouTube, Discord, Telegram, etc.)
-                const priorityServices = [
-                    'YouTube', 'Discord', 'Telegram', 'Netflix', 'Spotify',
-                    'ChatGPT', 'Claude', 'X (Twitter)', 'Instagram', 'Facebook',
-                    'WhatsApp', 'Signal', 'BBC', 'DW', 'HRW',
-                    'OVD-Info', 'The Village', 'Moscow Times', 'Novaya Gazeta',
-                    'Anilibria.TV', 'Nyaa.si', 'Nyaa.land',
-                    'Danbooru', 'Gelbooru',
-                    'PornHub', 'XHamster', 'XHamster Live', 'XNXX', 'XVideos',
-                    '10MinuteMail', 'Garmin Connect', 'JetBrains', 'JetBrains CDN',
-                    'JetBrains Grazie', 'Linktree', 'TrainingPeaks',
-                    '1337x', 'The Pirate Bay', 'RuTracker', 'Rutor', 'NNM-Club',
-                    'Ralph Lauren'
-                ];
-                
-                // Get and sort services
-                let serviceEntries = Object.entries(categoryData.services);
-                
-                // Sort services: priority services first, then alphabetically
-                serviceEntries.sort((a, b) => {
-                    const indexA = priorityServices.indexOf(a[0]);
-                    const indexB = priorityServices.indexOf(b[0]);
-                    
-                    if (indexA !== -1 && indexB !== -1) {
-                        return indexA - indexB;
-                    } else if (indexA !== -1) {
-                        return -1;
-                    } else if (indexB !== -1) {
-                        return 1;
-                    } else {
-                        return a[0].localeCompare(b[0]);
-                    }
-                });
-                
-                // Process services in the category
-                for (const [serviceName, serviceData] of serviceEntries) {
-                    servicesData[formattedCategoryName].services[serviceName] = serviceData;
-                    
-                    // Create service list item
-                    const serviceItem = document.createElement('li');
-                    serviceItem.className = 'service-item';
-                    
-                    const serviceDiv = createServiceElement(formattedCategoryName, serviceName, serviceData);
-                    serviceItem.appendChild(serviceDiv);
-                    servicesList.appendChild(serviceItem);
-                }
-                
-                categoryDiv.appendChild(servicesList);
-                categoriesContainer.appendChild(categoryDiv);
-            }
-            
-            // Function to create a service element
-            function createServiceElement(category, serviceName, serviceData) {
-                const serviceDiv = document.createElement('div');
-                serviceDiv.className = 'service';
-                serviceDiv.dataset.serviceName = serviceName.toLowerCase();
-                
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.className = 'service-checkbox';
-                checkbox.id = `service-${category}-${serviceName}`;
-                checkbox.dataset.category = category;
-                checkbox.dataset.service = serviceName;
-                
-                // Create favicon URL with better fallback strategy
-                let faviconUrl = '';
-                try {
-                    const urlObj = new URL(serviceData.url);
-                    const hostname = urlObj.hostname;
-                    
-                    // Use Google's favicon service as the primary source
-                    faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
-                } catch (e) {
-                    faviconUrl = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
-                }
-                
-                const icon = document.createElement('img');
-                icon.className = 'service-icon';
-                icon.src = faviconUrl;
-                icon.alt = serviceName;
-                icon.loading = 'lazy';
-                
-                // Add error handler for the icon
-                icon.onerror = function() {
-                    try {
-                        const urlObj = new URL(serviceData.url);
-                        const hostname = urlObj.hostname;
-                        // If Google's service fails, try the direct favicon
-                        this.src = `https://${hostname}/favicon.ico`;
-                        this.onerror = function() {
-                            // If direct favicon fails, use the default icon
-                            this.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
-                        };
-                    } catch (e) {
-                        this.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
-                    }
-                };
-                
-                // Simplify service name by removing common suffixes and formatting
-                let displayName = serviceName
-                    // First, handle special cases with proper capitalization
-                    .replace(/^BestchangeRu$/, 'BestChange')
-                    .replace(/^LostfilmTv$/, 'LostFilm.TV')
-                    .replace(/^EuronewsCom$/, 'Euronews')
-                    .replace(/^SpotifyCom$/, 'Spotify')
-                    .replace(/^NetflixCom$/, 'Netflix')
-                    .replace(/^YoutubeCom$/, 'YouTube')
-                    .replace(/^DiscordCom$/, 'Discord')
-                    .replace(/^DiscordGg$/, 'Discord')
-                    .replace(/^DiscordMedia$/, 'Discord')
-                    .replace(/^TelegramOrg$/, 'Telegram')
-                    .replace(/^WhatsappCom$/, 'WhatsApp')
-                    .replace(/^MessengerCom$/, 'Messenger')
-                    .replace(/^ViberCom$/, 'Viber')
-                    .replace(/^SignalOrg$/, 'Signal')
-                    .replace(/^ProtonMe$/, 'Proton')
-                    .replace(/^MediumCom$/, 'Medium')
-                    .replace(/^NotionSo$/, 'Notion')
-                    .replace(/^MiroCom$/, 'Miro')
-                    .replace(/^ZapierCom$/, 'Zapier')
-                    .replace(/^ChessCom$/, 'Chess')
-                    .replace(/^GrammarlyCom$/, 'Grammarly')
-                    .replace(/^DuolingoCom$/, 'Duolingo')
-                    .replace(/^PixivNet$/, 'Pixiv')
-                    .replace(/^CrunchyrollCom$/, 'Crunchyroll')
-                    .replace(/^PatreonCom$/, 'Patreon')
-                    .replace(/^XCom$/, 'X (Twitter)')
-                    .replace(/^QuoraCom$/, 'Quora')
-                    .replace(/^InstagramCom$/, 'Instagram')
-                    .replace(/^TiktokCom$/, 'TikTok')
-                    .replace(/^FacebookCom$/, 'Facebook')
-                    .replace(/^LinkedinCom$/, 'LinkedIn')
-                    .replace(/^SoundcloudCom$/, 'SoundCloud')
-                    // Handle news sites
-                    .replace(/^BbcCom$/, 'BBC')
-                    .replace(/^DwCom$/, 'DW')
-                    .replace(/^HrwOrg$/, 'HRW')
-                    .replace(/^OvdInfo$/, 'OVD-Info')
-                    .replace(/^TheVillageRu$/, 'The Village')
-                    .replace(/^MoscowtimesRu$/, 'Moscow Times')
-                    .replace(/^NovayagazetaRu$/, 'Novaya Gazeta')
-                    // Handle anime sites
-                    .replace(/^AnilibriaTv$/, 'Anilibria.TV')
-                    .replace(/^NyaaSi$/, 'Nyaa.si')
-                    .replace(/^NyaaLand$/, 'Nyaa.land')
-                    // Handle art sites
-                    .replace(/^DanbooruDonmaiUs$/, 'Danbooru')
-                    .replace(/^GelbooruCom$/, 'Gelbooru')
-                    // Handle casino sites
-                    .replace(/^7kCasino$/, '7K Casino')
-                    // Handle porn sites
-                    .replace(/^PornhubCom$/, 'PornHub')
-                    .replace(/^XhamsterCom$/, 'XHamster')
-                    .replace(/^XhamsterliveCom$/, 'XHamster Live')
-                    .replace(/^XnxxRuCom$/, 'XNXX')
-                    .replace(/^XvideosCom$/, 'XVideos')
-                    // Handle tools
-                    .replace(/^10minutemailCom$/, '10MinuteMail')
-                    .replace(/^ConnectGarminCom$/, 'Garmin Connect')
-                    .replace(/^JetbrainsCom$/, 'JetBrains')
-                    .replace(/^Jetbrains@cdn$/, 'JetBrains CDN')
-                    .replace(/^Jetbrains@grazieAi$/, 'JetBrains Grazie')
-                    .replace(/^LinktrEe$/, 'Linktree')
-                    .replace(/^TrainingpeaksCom$/, 'TrainingPeaks')
-                    // Handle torrent sites
-                    .replace(/^1337xTo$/, '1337x')
-                    .replace(/^ThepiratebayOrg$/, 'The Pirate Bay')
-                    .replace(/^RutrackerOrg$/, 'RuTracker')
-                    .replace(/^RutorInfo$/, 'Rutor')
-                    .replace(/^NnmclubTo$/, 'NNM-Club')
-                    // Handle shop sites
-                    .replace(/^RalphlaurenEu$/, 'Ralph Lauren')
-                    // Handle AI services
-                    .replace(/^ChatgptCom$/, 'ChatGPT')
-                    .replace(/^ClaudeAi$/, 'Claude')
-                    // Then handle general cases
-                    .replace(/\.(com|org|net|io|ai|tv|ru|eu|ag|fm|club|live|pro|online|info)$/i, '')
-                    .replace(/\./g, ' ')
-                    .replace(/\b\w/g, l => l.toUpperCase())
-                    .replace(/\s+/g, ' ')
-                    .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2') // Add space between camelCase
-                    .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space between camelCase
-                    .replace(/([A-Z])([A-Z])([a-z])/g, '$1 $2 $3') // Fix consecutive capitals
-                    .replace(/\s+/g, ' ')
-                    .trim();
-                
-                const name = document.createElement('span');
-                name.className = 'service-name';
-                name.textContent = displayName;
-                name.dataset.url = serviceData.url;
-                
-                // Create tooltip with description
-                const tooltip = document.createElement('div');
-                tooltip.className = 'service-tooltip';
-                tooltip.textContent = serviceData.description;
-                
-                // Add service elements to the service div
-                serviceDiv.appendChild(checkbox);
-                serviceDiv.appendChild(icon);
-                serviceDiv.appendChild(name);
-                serviceDiv.appendChild(tooltip);
-                
-                // Make div clickable for checkbox
-                serviceDiv.addEventListener('click', function(e) {
-                    if (e.target !== checkbox && e.target !== name) {
-                        checkbox.checked = !checkbox.checked;
-                    }
-                });
-                
-                return serviceDiv;
             }
             
             // Setup search functionality

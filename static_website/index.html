@@ -23,7 +23,7 @@
             border-radius: 8px;
             padding: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            max-width: 1400px;
+            max-width: 100%;
             margin: 0 auto;
         }
         .search-container {
@@ -37,31 +37,54 @@
             box-sizing: border-box;
             font-size: 16px;
         }
-        .categories-container {
+        .global-actions {
             display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 10px;
         }
-        .category {
-            flex: 1;
-            min-width: 200px;
+        .global-button {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
             margin-bottom: 20px;
         }
-        .category-title {
-            font-size: 18px;
-            font-weight: bold;
+        .category {
             margin-bottom: 10px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #ddd;
+        }
+        .category-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
         }
-        .category-select-all {
+        .category-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+        .category-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .category-button {
             font-size: 12px;
             color: #2196F3;
             cursor: pointer;
-            display: inline-block;
+            background: none;
+            border: none;
+            padding: 2px 5px;
         }
         .services-list {
             list-style: none;
@@ -77,6 +100,7 @@
             padding: 5px;
             border-radius: 4px;
             cursor: pointer;
+            position: relative;
         }
         .service:hover {
             background-color: #f5f5f5;
@@ -93,13 +117,41 @@
         }
         .service-name {
             font-size: 14px;
+            position: relative;
+        }
+        .service-name.link-active {
+            color: #2196F3;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .service-tooltip {
+            visibility: hidden;
+            width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 8px;
+            position: absolute;
+            z-index: 10;
+            bottom: 125%;
+            left: 0;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            pointer-events: none;
+        }
+        .service:hover .service-tooltip {
+            visibility: visible;
+            opacity: 1;
         }
         .actions {
             display: flex;
             justify-content: center;
             margin-top: 20px;
         }
-        button {
+        .generate-button {
             background-color: #4CAF50;
             color: white;
             border: none;
@@ -108,9 +160,8 @@
             cursor: pointer;
             font-size: 14px;
             font-weight: bold;
-            transition: background-color 0.2s;
         }
-        button:hover {
+        .generate-button:hover {
             background-color: #45a049;
         }
         .output-container {
@@ -127,25 +178,6 @@
             font-family: monospace;
             resize: vertical;
         }
-        .loader {
-            display: none;
-            text-align: center;
-            margin: 20px 0;
-        }
-        .loader::after {
-            content: "";
-            display: inline-block;
-            width: 30px;
-            height: 30px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
         .notification {
             position: fixed;
             bottom: 20px;
@@ -160,15 +192,10 @@
             z-index: 999;
             font-weight: bold;
         }
-        .select-all-button {
-            background-color: #2196F3;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            margin-right: 10px;
+        .loader {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
         }
     </style>
 </head>
@@ -180,20 +207,20 @@
             <input type="text" id="search-input" class="search-input" placeholder="Search for websites...">
         </div>
         
-        <div id="loader" class="loader"></div>
-        
-        <div class="actions">
-            <button class="select-all-button" id="select-all-btn">Select All</button>
-            <button class="select-all-button" id="deselect-all-btn">Deselect All</button>
+        <div class="global-actions">
+            <button id="select-all-btn" class="global-button">Select All</button>
+            <button id="deselect-all-btn" class="global-button">Deselect All</button>
         </div>
         
-        <div id="categories" class="categories-container">
+        <div id="loader" class="loader"></div>
+        
+        <div id="categories" class="categories-grid">
             <!-- Categories and services will be loaded here -->
             <div class="loading">Loading categories and services...</div>
         </div>
         
         <div class="actions">
-            <button id="generate-and-copy-btn">Generate IP List & Copy to Clipboard</button>
+            <button id="generate-and-copy-btn" class="generate-button">Generate IP List & Copy to Clipboard</button>
         </div>
         
         <div id="output-container" class="output-container">
@@ -207,7 +234,22 @@
     <script>
         // Store loaded service data
         const servicesData = {};
-        let serviceDescriptions = {};
+        
+        // Category display order - prioritize certain categories
+        const categoryPriority = [
+            'video', 
+            'messengers', 
+            'social', 
+            'news', 
+            'ai', 
+            'entertainment',
+            'anime', 
+            'education',
+            'tools',
+            'adult',
+            'torrent',
+            'shop'
+        ];
         
         document.addEventListener('DOMContentLoaded', async function() {
             const loader = document.getElementById('loader');
@@ -220,22 +262,28 @@
             const selectAllBtn = document.getElementById('select-all-btn');
             const deselectAllBtn = document.getElementById('deselect-all-btn');
             
-            // These are better descriptions for common service types
-            serviceDescriptions = {
-                "video": "Video streaming and hosting",
-                "torrent": "Torrent tracking and downloading",
-                "social": "Social networks and platforms",
-                "news": "News aggregation and websites",
-                "music": "Music streaming and downloads",
-                "gaming": "Gaming platforms and stores",
-                "messaging": "Messaging and communications",
-                "adult": "Adult content and entertainment",
-                "general": "General websites and services",
-                "shop": "Online shopping and e-commerce",
-                "education": "Educational resources and platforms",
-                "productivity": "Productivity tools and services",
-                "tools": "Development tools and utilities",
-            };
+            // Track if Ctrl key is pressed
+            let ctrlPressed = false;
+            
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Control') {
+                    ctrlPressed = true;
+                    document.querySelectorAll('.service-name').forEach(el => {
+                        if (el.dataset.url) {
+                            el.classList.add('link-active');
+                        }
+                    });
+                }
+            });
+            
+            document.addEventListener('keyup', function(e) {
+                if (e.key === 'Control') {
+                    ctrlPressed = false;
+                    document.querySelectorAll('.service-name').forEach(el => {
+                        el.classList.remove('link-active');
+                    });
+                }
+            });
             
             // Function to load service data from JSON file
             async function loadServiceData() {
@@ -243,35 +291,67 @@
                 categoriesContainer.innerHTML = '';
                 
                 try {
-                    // Fetch the data.json file with correct path handling
-                    const response = await fetch('./data.json');
+                    // Fetch the data.json file
+                    const response = await fetch('./data.json.transformed');
                     if (!response.ok) {
-                        throw new Error(`Failed to load data.json: ${response.status} ${response.statusText}`);
+                        // Try original data.json as fallback
+                        const fallbackResponse = await fetch('./data.json');
+                        if (!fallbackResponse.ok) {
+                            throw new Error(`Failed to load data: ${response.status} ${response.statusText}`);
+                        }
+                        return await fallbackResponse.json();
                     }
                     
-                    const data = await response.json();
+                    return await response.json();
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    categoriesContainer.innerHTML = `<div>Error loading services: ${error.message}. Please try again.</div>`;
+                    throw error;
+                } finally {
+                    loader.style.display = 'none';
+                }
+            }
+            
+            // Function to render all categories and services
+            async function renderCategoriesAndServices() {
+                try {
+                    const data = await loadServiceData();
                     
                     if (!data.categories || Object.keys(data.categories).length === 0) {
-                        throw new Error('No categories found in data.json');
+                        throw new Error('No categories found in data');
                     }
                     
-                    // Process each category
-                    const sortedCategories = Object.entries(data.categories).sort((a, b) => a[0].localeCompare(b[0]));
+                    // Get all categories and sort them by priority
+                    const categoryEntries = Object.entries(data.categories);
                     
-                    for (const [categoryName, categoryData] of sortedCategories) {
+                    // Sort categories: first by priority, then alphabetically
+                    categoryEntries.sort((a, b) => {
+                        const indexA = categoryPriority.indexOf(a[0]);
+                        const indexB = categoryPriority.indexOf(b[0]);
+                        
+                        if (indexA !== -1 && indexB !== -1) {
+                            return indexA - indexB;
+                        } else if (indexA !== -1) {
+                            return -1;
+                        } else if (indexB !== -1) {
+                            return 1;
+                        } else {
+                            return a[0].localeCompare(b[0]);
+                        }
+                    });
+                    
+                    // Process each category
+                    for (const [categoryName, categoryData] of categoryEntries) {
+                        // Skip empty categories
                         if (!categoryData.services || Object.keys(categoryData.services).length === 0) {
-                            console.warn(`No services found for category ${categoryName}`);
                             continue;
                         }
                         
                         createCategoryElement(categoryName, categoryData);
                     }
-                    
                 } catch (error) {
-                    console.error('Error loading data:', error);
-                    categoriesContainer.innerHTML = `<div>Error loading services: ${error.message}. Please try again.</div>`;
-                } finally {
-                    loader.style.display = 'none';
+                    console.error('Error rendering data:', error);
+                    categoriesContainer.innerHTML = `<div>Error: ${error.message}</div>`;
                 }
             }
             
@@ -282,42 +362,74 @@
                 categoryDiv.className = 'category';
                 categoryDiv.dataset.category = categoryName;
                 
+                // Create category header
                 const categoryHeader = document.createElement('div');
-                categoryHeader.className = 'category-title';
+                categoryHeader.className = 'category-header';
                 
                 // Format category name
                 const formattedCategoryName = categoryName.charAt(0).toUpperCase() + categoryName.slice(1).replace(/_/g, ' ');
                 
-                const categoryTitle = document.createElement('span');
+                const categoryTitle = document.createElement('div');
+                categoryTitle.className = 'category-title';
                 categoryTitle.textContent = formattedCategoryName;
                 categoryHeader.appendChild(categoryTitle);
                 
-                const selectAll = document.createElement('span');
-                selectAll.className = 'category-select-all';
-                selectAll.textContent = 'Select All';
-                selectAll.addEventListener('click', function() {
+                // Category actions
+                const categoryActions = document.createElement('div');
+                categoryActions.className = 'category-actions';
+                
+                const selectAllBtn = document.createElement('button');
+                selectAllBtn.className = 'category-button';
+                selectAllBtn.textContent = 'Select All';
+                selectAllBtn.addEventListener('click', function() {
                     const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
-                    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-                    
-                    checkboxes.forEach(cb => {
-                        cb.checked = !allChecked;
-                    });
-                    
-                    selectAll.textContent = allChecked ? 'Select All' : 'Deselect All';
+                    checkboxes.forEach(cb => cb.checked = true);
                 });
                 
-                categoryHeader.appendChild(selectAll);
+                const deselectAllBtn = document.createElement('button');
+                deselectAllBtn.className = 'category-button';
+                deselectAllBtn.textContent = 'None';
+                deselectAllBtn.addEventListener('click', function() {
+                    const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
+                    checkboxes.forEach(cb => cb.checked = false);
+                });
+                
+                categoryActions.appendChild(selectAllBtn);
+                categoryActions.appendChild(deselectAllBtn);
+                categoryHeader.appendChild(categoryActions);
+                
                 categoryDiv.appendChild(categoryHeader);
                 
+                // Create services list
                 const servicesList = document.createElement('ul');
                 servicesList.className = 'services-list';
                 
                 // Save category services in our data structure
                 servicesData[formattedCategoryName] = { services: {} };
                 
-                // Process services in the category
-                const serviceEntries = Object.entries(categoryData.services);
+                // Priority services to show first (YouTube, Netflix, etc.)
+                const priorityServices = ['YouTube', 'Discord', 'Telegram', 'Netflix', 'Spotify'];
                 
+                // Get and sort services
+                let serviceEntries = Object.entries(categoryData.services);
+                
+                // Sort services: priority services first, then alphabetically
+                serviceEntries.sort((a, b) => {
+                    const indexA = priorityServices.indexOf(a[0]);
+                    const indexB = priorityServices.indexOf(b[0]);
+                    
+                    if (indexA !== -1 && indexB !== -1) {
+                        return indexA - indexB;
+                    } else if (indexA !== -1) {
+                        return -1;
+                    } else if (indexB !== -1) {
+                        return 1;
+                    } else {
+                        return a[0].localeCompare(b[0]);
+                    }
+                });
+                
+                // Process services in the category
                 for (const [serviceName, serviceData] of serviceEntries) {
                     servicesData[formattedCategoryName].services[serviceName] = serviceData;
                     
@@ -369,15 +481,29 @@
                 const name = document.createElement('span');
                 name.className = 'service-name';
                 name.textContent = serviceName;
+                name.dataset.url = serviceData.url;
+                
+                // Add click handler for the name (only works when CTRL is pressed)
+                name.addEventListener('click', function(e) {
+                    if (ctrlPressed) {
+                        window.open(serviceData.url, '_blank');
+                    }
+                });
+                
+                // Create tooltip with description
+                const tooltip = document.createElement('div');
+                tooltip.className = 'service-tooltip';
+                tooltip.textContent = serviceData.description;
                 
                 // Add service elements to the service div
                 serviceDiv.appendChild(checkbox);
                 serviceDiv.appendChild(icon);
                 serviceDiv.appendChild(name);
+                serviceDiv.appendChild(tooltip);
                 
-                // Make entire div clickable
+                // Make div clickable for checkbox
                 serviceDiv.addEventListener('click', function(e) {
-                    if (e.target !== checkbox) {
+                    if (e.target !== checkbox && e.target !== name) {
                         checkbox.checked = !checkbox.checked;
                     }
                 });
@@ -408,17 +534,13 @@
             // Select all button functionality
             selectAllBtn.addEventListener('click', function() {
                 const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-                checkboxes.forEach(cb => {
-                    cb.checked = true;
-                });
+                checkboxes.forEach(cb => cb.checked = true);
             });
             
             // Deselect all button functionality
             deselectAllBtn.addEventListener('click', function() {
                 const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-                checkboxes.forEach(cb => {
-                    cb.checked = false;
-                });
+                checkboxes.forEach(cb => cb.checked = false);
             });
             
             // Setup generate and copy button
@@ -458,31 +580,33 @@
                             notification.style.display = 'none';
                         }, 2000);
                     } catch (err) {
-                        console.error('Unable to copy', err);
-                        try {
-                            // Fallback to clipboard API
-                            navigator.clipboard.writeText(output.value).then(
-                                function() {
-                                    notification.style.display = 'block';
-                                    setTimeout(() => {
-                                        notification.style.display = 'none';
-                                    }, 2000);
-                                },
-                                function() {
-                                    alert('Failed to copy text to clipboard');
-                                }
-                            );
-                        } catch (err) {
-                            alert('Failed to copy text to clipboard');
-                        }
+                        navigator.clipboard.writeText(output.value)
+                            .then(() => {
+                                notification.style.display = 'block';
+                                setTimeout(() => {
+                                    notification.style.display = 'none';
+                                }, 2000);
+                            })
+                            .catch(() => {
+                                alert('Failed to copy text to clipboard');
+                            });
                     }
                 } else {
                     alert('No IP ranges found for selected services');
                 }
             });
             
-            // Load data when page loads
-            loadServiceData();
+            // Add a small information about CTRL+hover feature
+            const helpText = document.createElement('p');
+            helpText.style.textAlign = 'center';
+            helpText.style.fontSize = '12px';
+            helpText.style.color = '#666';
+            helpText.style.marginTop = '5px';
+            helpText.innerHTML = 'Pro tip: Hold <kbd>CTRL</kbd> and click on a website name to open it in a new tab.';
+            document.querySelector('.search-container').after(helpText);
+            
+            // Load and render data when page loads
+            renderCategoriesAndServices();
         });
     </script>
 </body>

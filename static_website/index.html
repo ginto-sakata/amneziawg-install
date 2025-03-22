@@ -4,605 +4,684 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AmneziaWG Site Selection</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            color: #111827;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f8f8;
+            color: #333;
         }
-        .category-card {
-            transition: all 0.2s ease;
-            border: 1px solid #e5e7eb;
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 24px;
+            font-weight: 600;
         }
-        .category-card:hover {
-            box-shadow: 0 8px 16px rgba(0,0,0,0.05);
-            transform: translateY(-2px);
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .search-container {
+            margin-bottom: 15px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        .global-actions {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+            gap: 8px;
+        }
+        .global-button {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        .category {
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            padding: 8px;
+        }
+        /* Make News and Media categories double-wide */
+        .category[data-category="News"],
+        .category[data-category="Media"] {
+            grid-column: span 2;
+        }
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        .category-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+        .category-header-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .category-icon-button {
+            width: 16px;
+            height: 16px;
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            opacity: 0.7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .category-icon-button:hover {
+            opacity: 1;
+        }
+        .category-icon-button svg {
+            width: 16px;
+            height: 16px;
+            fill: #2196F3;
+        }
+        .services-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1;
+        }
+        .category-actions {
+            display: flex;
+            gap: 5px;
+            justify-content: flex-end;
+            padding-top: 6px;
+            border-top: 1px solid #eee;
+            font-size: 11px;
+        }
+        .category-button {
+            font-size: 11px;
+            color: #2196F3;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 2px 4px;
+            font-weight: 500;
         }
         .service-item {
-            transition: background 0.15s ease;
+            margin-bottom: 4px;
         }
-        .service-item:hover {
-            background-color: #f9fafb;
+        .service {
+            display: flex;
+            align-items: center;
+            padding: 3px;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
         }
-        .service-item.selected {
-            background-color: #f0f9ff;
-            border-left: 3px solid #3b82f6;
+        .service:hover {
+            background-color: #f5f5f5;
         }
-        .service-item img {
-            filter: grayscale(0.5);
-            transition: filter 0.2s ease;
+        .service-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 6px;
+            object-fit: contain;
+            vertical-align: middle;
+            opacity: 0.9;
         }
-        .service-item:hover img,
-        .service-item.selected img {
-            filter: grayscale(0);
+        img.favicon {
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            min-height: 24px;
         }
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+        .service:hover .service-icon {
+            opacity: 1;
         }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
+        .service-checkbox {
+            margin-right: 6px;
+            cursor: pointer;
         }
-        ::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 4px;
+        .service-name {
+            font-size: 13px;
+            position: relative;
+            cursor: default;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #a1a1a1;
+        .service-name.link-active {
+            color: #2196F3;
+            text-decoration: underline;
+            cursor: pointer;
+            background-color: rgba(33, 150, 243, 0.1);
+            padding: 2px 4px;
+            border-radius: 3px;
         }
-        .tooltip {
+        .service-tooltip {
             visibility: hidden;
+            width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 8px;
+            position: absolute;
+            z-index: 10;
+            bottom: 125%;
+            left: 0;
             opacity: 0;
             transition: opacity 0.3s;
+            font-size: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            pointer-events: none;
         }
-        .service-item:hover .tooltip {
+        .service:hover .service-tooltip {
             visibility: visible;
             opacity: 1;
         }
-        .search-highlight {
-            background-color: #fef3c7;
-        }
         .notification {
-            transform: translateX(-50%) translateY(100%);
-            animation: slideUp 0.3s forwards, fadeOut 0.3s 2s forwards;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 999;
+            font-weight: bold;
         }
-        @keyframes slideUp {
-            to {
-                transform: translateX(-50%) translateY(0);
-            }
+        .loader {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
         }
-        @keyframes fadeOut {
-            to {
-                opacity: 0;
-                visibility: hidden;
-            }
+        /* Special handling for news category */
+        .category[data-category="News"] .services-list,
+        .category[data-category="Media"] .services-list {
+            column-count: 2;
+            column-gap: 15px;
         }
-        /* Dark mode support */
-        @media (prefers-color-scheme: dark) {
-            .dark-mode-toggle i {
-                color: #f3f4f6;
-            }
+        .category[data-category="News"] .service-item,
+        .category[data-category="Media"] .service-item {
+            break-inside: avoid;
+        }
+        /* Help text styling */
+        .help-text {
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+            margin-bottom: 12px;
+        }
+        kbd {
+            background-color: #f7f7f7;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+            color: #333;
+            display: inline-block;
+            font-size: 10px;
+            line-height: 1;
+            padding: 2px 4px;
         }
     </style>
 </head>
-<body class="min-h-screen">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <header class="mb-8">
-            <div class="flex justify-between items-center mb-3">
-                <h1 class="text-3xl font-bold text-indigo-700">AmneziaWG Site Selection</h1>
-                <button class="dark-mode-toggle p-2 rounded-full hover:bg-gray-200 focus:outline-none" title="Toggle dark mode">
-                    <i class="fas fa-moon text-gray-700"></i>
-                </button>
-            </div>
-            <p class="text-gray-600 max-w-3xl">Select the websites and services you want to route through AmneziaWG's secure tunnel. Your selections will generate a list of IP ranges to use in your configuration.</p>
-        </header>
-
-        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
-            <div class="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4 mb-6">
-                <div class="relative flex-grow">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i class="fas fa-search text-gray-400"></i>
-                    </div>
-                    <input id="search-input" type="text" class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150" placeholder="Search websites and services...">
-                </div>
-                <div class="flex space-x-2">
-                    <button id="select-all-btn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
-                        <i class="fas fa-check-square mr-2"></i> Select All
-                    </button>
-                    <button id="deselect-all-btn" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
-                        <i class="fas fa-square mr-2"></i> Deselect All
-                    </button>
-                </div>
-            </div>
-
-            <div class="text-sm text-gray-500 italic mb-4 flex items-center">
-                <i class="fas fa-info-circle mr-2 text-indigo-500"></i>
-                <span>Pro tip: Hold <kbd class="px-2 py-1 bg-gray-100 rounded">CTRL</kbd> and click on a service name to open its website in a new tab</span>
-            </div>
-
-            <div id="loader" class="flex justify-center py-8 hidden">
-                <svg class="animate-spin h-10 w-10 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </div>
-
-            <div id="categories-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Categories will be dynamically loaded here -->
-            </div>
+<body>
+    <div class="container">
+        <h1>Pick the websites you want to route through AmnesiaWG</h1>
+        
+        <div class="search-container">
+            <input type="text" id="search-input" class="search-input" placeholder="Search for websites...">
+        </div>
+        
+        <div class="help-text">
+            Pro tip: Hold <kbd>CTRL</kbd> and click on a website name to open it in a new tab.
+        </div>
+        
+        <div class="global-actions">
+            <button id="select-all-btn" class="global-button">Select All</button>
+            <button id="deselect-all-btn" class="global-button">Deselect All</button>
+            <button id="generate-and-copy-btn" class="global-button">Copy IP List</button>
+        </div>
+        
+        <div id="loader" class="loader"></div>
+        
+        <div id="categories" class="categories-grid">
+            <!-- Categories and services will be loaded here -->
+            <div class="loading">Loading categories and services...</div>
         </div>
 
-        <div class="flex justify-center mb-8">
-            <button id="generate-btn" class="inline-flex items-center px-6 py-3 border border-transparent text-lg font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">
-                <i class="fas fa-list-check mr-2"></i> Generate IP List & Copy to Clipboard
-            </button>
-        </div>
-
-        <div id="output-container" class="bg-white rounded-xl shadow-md p-6 mb-8 hidden">
-            <h3 class="text-lg font-medium text-gray-900 mb-3">IP Ranges to Route:</h3>
-            <div class="relative">
-                <textarea id="output" class="w-full h-32 p-4 border border-gray-300 rounded-md shadow-inner font-mono text-sm bg-gray-50 focus:ring-indigo-500 focus:border-indigo-500" readonly></textarea>
-                <button id="copy-btn" class="absolute right-3 top-3 p-2 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" title="Copy to clipboard">
-                    <i class="fas fa-copy"></i>
-                </button>
-            </div>
-        </div>
+        <!-- Hidden textarea for copying -->
+        <textarea id="output" style="position: absolute; left: -9999px; top: -9999px;"></textarea>
     </div>
-
-    <div id="notification" class="notification fixed bottom-8 left-1/2 bg-green-600 text-white px-6 py-3 rounded-md shadow-lg hidden">
-        <div class="flex items-center">
-            <i class="fas fa-check-circle mr-2"></i>
-            <span>Copied to clipboard!</span>
-        </div>
-    </div>
-
+    
+    <div id="notification" class="notification">Copied to clipboard!</div>
+    
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Main elements
+        // Store loaded service data
+        const servicesData = {};
+        let descriptions = {};
+        
+        document.addEventListener('DOMContentLoaded', async function() {
+            const loader = document.getElementById('loader');
+            const categoriesContainer = document.getElementById('categories');
+            const generateAndCopyBtn = document.getElementById('generate-and-copy-btn');
+            const output = document.getElementById('output');
+            const notification = document.getElementById('notification');
             const searchInput = document.getElementById('search-input');
             const selectAllBtn = document.getElementById('select-all-btn');
             const deselectAllBtn = document.getElementById('deselect-all-btn');
-            const generateBtn = document.getElementById('generate-btn');
-            const outputContainer = document.getElementById('output-container');
-            const output = document.getElementById('output');
-            const copyBtn = document.getElementById('copy-btn');
-            const notification = document.getElementById('notification');
-            const loader = document.getElementById('loader');
-            const categoriesContainer = document.getElementById('categories-container');
-            const darkModeToggle = document.querySelector('.dark-mode-toggle');
-
-            // Services data store
-            const servicesData = {};
             
-            // CTRL key tracking for website links
+            // Track if Ctrl key is pressed and currently hovered service
             let ctrlPressed = false;
+            let hoveredService = null;
             
-            // Category priority order
-            const categoryPriority = [
-                'video', 'messengers', 'social', 'news', 'ai', 'entertainment',
-                'anime', 'education', 'tools', 'adult', 'torrent', 'shop'
-            ];
-
-            // Dark mode toggle
-            darkModeToggle.addEventListener('click', function() {
-                document.documentElement.classList.toggle('dark');
-                const icon = this.querySelector('i');
-                if (icon.classList.contains('fa-moon')) {
-                    icon.classList.remove('fa-moon');
-                    icon.classList.add('fa-sun');
-                } else {
-                    icon.classList.remove('fa-sun');
-                    icon.classList.add('fa-moon');
-                }
-            });
-
-            // Track CTRL key for website links
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Control') {
                     ctrlPressed = true;
-                    document.querySelectorAll('.service-name').forEach(el => {
-                        if (el.dataset.url) {
-                            el.classList.add('text-indigo-600', 'underline');
-                            el.classList.add('cursor-pointer');
-                        }
-                    });
+                    if (hoveredService) {
+                        hoveredService.classList.add('link-active');
+                    }
                 }
             });
             
             document.addEventListener('keyup', function(e) {
                 if (e.key === 'Control') {
                     ctrlPressed = false;
-                    document.querySelectorAll('.service-name').forEach(el => {
-                        el.classList.remove('text-indigo-600', 'underline');
-                        el.classList.remove('cursor-pointer');
-                    });
+                    if (hoveredService) {
+                        hoveredService.classList.remove('link-active');
+                    }
                 }
             });
-
-            // Load service data from JSON file
+            
+            // Function to load service data
             async function loadServiceData() {
-                loader.classList.remove('hidden');
+                loader.style.display = 'block';
                 categoriesContainer.innerHTML = '';
                 
                 try {
-                    // Fetch the data.json file
-                    const response = await fetch(window.location.href.endsWith('/') ? 'data.json.transformed' : './data.json.transformed');
-                    if (!response.ok) {
-                        // Try original data.json as fallback
-                        const fallbackResponse = await fetch('./data.json');
-                        if (!fallbackResponse.ok) {
-                            throw new Error(`Failed to load data: ${response.status} ${response.statusText}`);
-                        }
-                        return await fallbackResponse.json();
+                    // Load all required data in parallel
+                    const [categoriesResponse, servicesResponse, descriptionsResponse, cidrsResponse] = await Promise.all([
+                        fetch('./categories.json'),
+                        fetch('./services.json'),
+                        fetch('./descriptions.json'),
+                        fetch('./cidrs.json')
+                    ]);
+                    
+                    if (!categoriesResponse.ok) {
+                        throw new Error(`Failed to load categories: ${categoriesResponse.status}`);
+                    }
+                    if (!servicesResponse.ok) {
+                        throw new Error(`Failed to load services: ${servicesResponse.status}`);
+                    }
+                    if (!descriptionsResponse.ok) {
+                        throw new Error(`Failed to load descriptions: ${descriptionsResponse.status}`);
+                    }
+                    if (!cidrsResponse.ok) {
+                        throw new Error(`Failed to load CIDRs: ${cidrsResponse.status}`);
                     }
                     
-                    return await response.json();
+                    const categoriesData = await categoriesResponse.json();
+                    const services = await servicesResponse.json();
+                    descriptions = await descriptionsResponse.json();
+                    const cidrs = await cidrsResponse.json();
+                    
+                    // Debug logging
+                    console.log('Categories:', categoriesData);
+                    console.log('Services:', services);
+                    console.log('Descriptions:', descriptions);
+                    console.log('CIDRs:', cidrs);
+                    
+                    // Combine all data
+                    const result = {
+                        categories: categoriesData.categories,
+                        order: categoriesData.order,
+                        services: services,
+                        descriptions: descriptions,
+                        cidrs: cidrs.services
+                    };
+                    
+                    // Debug logging
+                    console.log('Combined data:', result);
+                    
+                    return result;
                 } catch (error) {
                     console.error('Error loading data:', error);
-                    categoriesContainer.innerHTML = `
-                        <div class="col-span-full p-8 text-center">
-                            <div class="text-red-600 mb-2"><i class="fas fa-exclamation-circle text-3xl"></i></div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-1">Error loading services</h3>
-                            <p class="text-gray-500">${error.message}. Please try refreshing the page.</p>
-                        </div>
-                    `;
+                    categoriesContainer.innerHTML = `<div>Error loading services: ${error.message}. Please try again.</div>`;
                     throw error;
                 } finally {
-                    loader.classList.add('hidden');
+                    loader.style.display = 'none';
                 }
             }
-
-            // Render categories and services
+            
+            // Function to format service ID into display name
+            function formatDisplayName(serviceId, services) {
+                return services[serviceId] || serviceId;
+            }
+            
+            // Function to render all categories and services
             async function renderCategoriesAndServices() {
                 try {
-                    const data = await loadServiceData();
+                    const { categories, order, services, descriptions, cidrs } = await loadServiceData();
                     
-                    if (!data.categories || Object.keys(data.categories).length === 0) {
-                        throw new Error('No categories found in data');
-                    }
+                    // Debug logging
+                    console.log('Categories to render:', categories);
+                    console.log('Order:', order);
+                    console.log('Services to render:', services);
+                    console.log('CIDRs to render:', cidrs);
                     
-                    // Sort categories by priority
-                    const categoryEntries = Object.entries(data.categories).sort((a, b) => {
-                        const indexA = categoryPriority.indexOf(a[0]);
-                        const indexB = categoryPriority.indexOf(b[0]);
+                    // Clear existing content
+                    categoriesContainer.innerHTML = '';
+                    
+                    // Use the order from categories.json
+                    const sortedCategories = order;
+                    
+                    // Debug logging
+                    console.log('Sorted categories:', sortedCategories);
+                    
+                    // Render each category
+                    for (const category of sortedCategories) {
+                        const categoryData = categories[category];
+                        const formattedCategoryName = categoryData.name;
                         
-                        if (indexA !== -1 && indexB !== -1) {
-                            return indexA - indexB;
-                        } else if (indexA !== -1) {
-                            return -1;
-                        } else if (indexB !== -1) {
-                            return 1;
-                        } else {
-                            return a[0].localeCompare(b[0]);
-                        }
-                    });
-                    
-                    // Process categories
-                    for (const [categoryName, categoryData] of categoryEntries) {
-                        if (!categoryData.services || Object.keys(categoryData.services).length === 0) {
-                            continue;
+                        // Create category container
+                        const categoryDiv = document.createElement('div');
+                        categoryDiv.className = 'category';
+                        categoryDiv.dataset.category = formattedCategoryName;
+                        
+                        // Create category header
+                        const categoryHeader = document.createElement('div');
+                        categoryHeader.className = 'category-header';
+                        
+                        // Add category title
+                        const categoryTitle = document.createElement('h3');
+                        categoryTitle.className = 'category-title';
+                        categoryTitle.textContent = formattedCategoryName;
+                        categoryHeader.appendChild(categoryTitle);
+                        
+                        // Create header action buttons with icons
+                        const headerActions = document.createElement('div');
+                        headerActions.className = 'category-header-actions';
+                        
+                        // Create select all button with icon
+                        const selectAllBtn = document.createElement('button');
+                        selectAllBtn.className = 'category-icon-button';
+                        selectAllBtn.title = 'Select All';
+                        selectAllBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8l-9 9z"/></svg>';
+                        
+                        // Create deselect all button with icon
+                        const deselectAllBtn = document.createElement('button');
+                        deselectAllBtn.className = 'category-icon-button';
+                        deselectAllBtn.title = 'Deselect All';
+                        deselectAllBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2z"/></svg>';
+                        
+                        // Add click handlers
+                        selectAllBtn.addEventListener('click', function() {
+                            const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
+                            checkboxes.forEach(cb => cb.checked = true);
+                        });
+                        
+                        deselectAllBtn.addEventListener('click', function() {
+                            const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
+                            checkboxes.forEach(cb => cb.checked = false);
+                        });
+                        
+                        headerActions.appendChild(selectAllBtn);
+                        headerActions.appendChild(deselectAllBtn);
+                        categoryHeader.appendChild(headerActions);
+                        
+                        categoryDiv.appendChild(categoryHeader);
+                        
+                        // Create services list
+                        const servicesList = document.createElement('ul');
+                        servicesList.className = 'services-list';
+                        
+                        // Save category services in our data structure
+                        servicesData[formattedCategoryName] = { services: {} };
+                        
+                        // Get and sort services
+                        let serviceEntries = categoryData.services
+                            .filter(serviceId => cidrs[serviceId])
+                            .map(serviceId => [serviceId, cidrs[serviceId]]);
+                        
+                        // Sort services alphabetically by display name
+                        serviceEntries.sort((a, b) => {
+                            const nameA = services[a[0]] || a[0];
+                            const nameB = services[b[0]] || b[0];
+                            return nameA.localeCompare(nameB);
+                        });
+                        
+                        // Process services in the category
+                        for (const [serviceId, serviceData] of serviceEntries) {
+                            // Create service container
+                            const serviceItem = document.createElement('li');
+                            serviceItem.className = 'service-item';
+                            
+                            const serviceDiv = document.createElement('div');
+                            serviceDiv.className = 'service';
+                            
+                            // Create checkbox
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.className = 'service-checkbox';
+                            checkbox.dataset.category = formattedCategoryName;
+                            checkbox.dataset.service = serviceId;
+                            
+                            // Create icon container
+                            const icon = document.createElement('div');
+                            icon.className = 'service-icon';
+                            
+                            // Create favicon
+                            const favicon = document.createElement('img');
+                            favicon.className = 'favicon';
+                            favicon.alt = '';
+                            favicon.src = `https://www.google.com/s2/favicons?domain=${serviceId}&sz=24`;
+                            favicon.onerror = function() {
+                                this.src = `https://www.google.com/s2/favicons?domain=${serviceId}&sz=16`;
+                                // Force size for smaller icons
+                                this.style.width = '24px';
+                                this.style.height = '24px';
+                            };
+                            icon.appendChild(favicon);
+                            
+                            // Create service name
+                            const name = document.createElement('span');
+                            name.className = 'service-name';
+                            name.textContent = formatDisplayName(serviceId, services);
+                            name.dataset.url = `https://${serviceId}`;
+                            name.dataset.serviceName = serviceId.toLowerCase(); // Add this for search functionality
+                            
+                            // Create tooltip with description
+                            const tooltip = document.createElement('div');
+                            tooltip.className = 'service-tooltip';
+                            tooltip.textContent = descriptions[serviceId] || 'Access website and services';
+                            
+                            // Add service elements to the service div
+                            serviceDiv.appendChild(checkbox);
+                            serviceDiv.appendChild(icon);
+                            serviceDiv.appendChild(name);
+                            serviceDiv.appendChild(tooltip);
+                            
+                            // Add service div to service item
+                            serviceItem.appendChild(serviceDiv);
+                            
+                            // Make div clickable for checkbox
+                            serviceDiv.addEventListener('click', function(e) {
+                                if (e.target !== checkbox) {
+                                    checkbox.checked = !checkbox.checked;
+                                }
+                            });
+                            
+                            // Add hover effect for CTRL key
+                            serviceDiv.addEventListener('mouseenter', function() {
+                                hoveredService = this;
+                                if (ctrlPressed) {
+                                    this.classList.add('link-active');
+                                }
+                            });
+                            
+                            serviceDiv.addEventListener('mouseleave', function() {
+                                hoveredService = null;
+                                this.classList.remove('link-active');
+                            });
+                            
+                            // Add click handler for opening URL with CTRL
+                            name.addEventListener('click', function(e) {
+                                if (ctrlPressed) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    window.open(this.dataset.url, '_blank');
+                                }
+                            });
+                            
+                            // Add service to list
+                            servicesList.appendChild(serviceItem);
+                            
+                            // Save service data
+                            servicesData[formattedCategoryName].services[serviceId] = serviceData;
                         }
                         
-                        createCategoryElement(categoryName, categoryData);
+                        // Add services list to category
+                        categoryDiv.appendChild(servicesList);
+                        
+                        // Add category to container
+                        categoriesContainer.appendChild(categoryDiv);
                     }
                 } catch (error) {
-                    console.error('Error rendering data:', error);
+                    console.error('Error rendering categories:', error);
+                    categoriesContainer.innerHTML = `<div>Error rendering categories: ${error.message}</div>`;
                 }
             }
-
-            // Create category element
-            function createCategoryElement(categoryName, categoryData) {
-                // Format category name
-                const formattedCategoryName = categoryName.charAt(0).toUpperCase() + categoryName.slice(1).replace(/_/g, ' ');
-                
-                // Create category card
-                const categoryCard = document.createElement('div');
-                categoryCard.className = 'category-card bg-white rounded-lg shadow-sm overflow-hidden';
-                categoryCard.dataset.category = categoryName;
-                
-                // Category header
-                const categoryHeader = document.createElement('div');
-                categoryHeader.className = 'bg-gradient-to-r from-indigo-500 to-purple-600 p-4 text-white';
-                
-                const categoryTitle = document.createElement('div');
-                categoryTitle.className = 'flex justify-between items-center';
-                
-                const title = document.createElement('h3');
-                title.className = 'text-lg font-semibold';
-                title.textContent = formattedCategoryName;
-                
-                const actionsContainer = document.createElement('div');
-                actionsContainer.className = 'flex space-x-2';
-                
-                const selectCategoryBtn = document.createElement('button');
-                selectCategoryBtn.className = 'text-xs px-2 py-1 bg-white bg-opacity-20 hover:bg-opacity-30 rounded transition focus:outline-none';
-                selectCategoryBtn.textContent = 'Select All';
-                selectCategoryBtn.addEventListener('click', function() {
-                    const checkboxes = categoryCard.querySelectorAll('input[type="checkbox"]');
-                    checkboxes.forEach(cb => {
-                        cb.checked = true;
-                        cb.closest('.service-item').classList.add('selected');
-                    });
-                });
-                
-                const deselectCategoryBtn = document.createElement('button');
-                deselectCategoryBtn.className = 'text-xs px-2 py-1 bg-white bg-opacity-20 hover:bg-opacity-30 rounded transition focus:outline-none';
-                deselectCategoryBtn.textContent = 'None';
-                deselectCategoryBtn.addEventListener('click', function() {
-                    const checkboxes = categoryCard.querySelectorAll('input[type="checkbox"]');
-                    checkboxes.forEach(cb => {
-                        cb.checked = false;
-                        cb.closest('.service-item').classList.remove('selected');
-                    });
-                });
-                
-                actionsContainer.appendChild(selectCategoryBtn);
-                actionsContainer.appendChild(deselectCategoryBtn);
-                
-                categoryTitle.appendChild(title);
-                categoryTitle.appendChild(actionsContainer);
-                categoryHeader.appendChild(categoryTitle);
-                categoryCard.appendChild(categoryHeader);
-                
-                // Services container
-                const servicesContainer = document.createElement('div');
-                servicesContainer.className = 'p-3 max-h-80 overflow-y-auto';
-                
-                // Store services data
-                servicesData[formattedCategoryName] = { services: {} };
-                
-                // Priority services
-                const priorityServices = ['YouTube', 'Discord', 'Telegram', 'Netflix', 'Spotify'];
-                
-                // Sort services
-                let serviceEntries = Object.entries(categoryData.services).sort((a, b) => {
-                    const indexA = priorityServices.indexOf(a[0]);
-                    const indexB = priorityServices.indexOf(b[0]);
-                    
-                    if (indexA !== -1 && indexB !== -1) {
-                        return indexA - indexB;
-                    } else if (indexA !== -1) {
-                        return -1;
-                    } else if (indexB !== -1) {
-                        return 1;
-                    } else {
-                        return a[0].localeCompare(b[0]);
-                    }
-                });
-                
-                // Create service elements
-                for (const [serviceName, serviceData] of serviceEntries) {
-                    servicesData[formattedCategoryName].services[serviceName] = serviceData;
-                    
-                    const serviceElement = createServiceElement(formattedCategoryName, serviceName, serviceData);
-                    servicesContainer.appendChild(serviceElement);
-                }
-                
-                categoryCard.appendChild(servicesContainer);
-                categoriesContainer.appendChild(categoryCard);
-            }
-
-            // Create service element
-            function createServiceElement(category, serviceName, serviceData) {
-                const serviceItem = document.createElement('div');
-                serviceItem.className = 'service-item flex items-center p-2 rounded-md cursor-pointer relative mb-1';
-                serviceItem.dataset.serviceName = serviceName.toLowerCase();
-                
-                // Checkbox
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.className = 'h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded';
-                checkbox.id = `service-${category}-${serviceName}`;
-                checkbox.dataset.category = category;
-                checkbox.dataset.service = serviceName;
-                checkbox.addEventListener('change', function() {
-                    if (this.checked) {
-                        serviceItem.classList.add('selected');
-                    } else {
-                        serviceItem.classList.remove('selected');
-                    }
-                });
-                
-                // Create favicon URL using Google's favicon service
-                let faviconUrl = '';
-                try {
-                    const urlObj = new URL(serviceData.url);
-                    faviconUrl = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=32`;
-                } catch (e) {
-                    // Fallback if URL is invalid
-                    faviconUrl = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
-                }
-                
-                // Icon
-                const icon = document.createElement('img');
-                icon.className = 'h-5 w-5 mr-3 flex-shrink-0';
-                icon.src = faviconUrl;
-                icon.alt = serviceName;
-                icon.loading = 'lazy';
-                icon.onerror = function() {
-                    this.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
-                };
-                
-                // Service name
-                const serviceNameElem = document.createElement('span');
-                serviceNameElem.className = 'service-name text-sm font-medium text-gray-700 flex-grow';
-                serviceNameElem.textContent = serviceName;
-                serviceNameElem.dataset.url = serviceData.url;
-                
-                // Click handler for service name
-                serviceNameElem.addEventListener('click', function(e) {
-                    if (ctrlPressed && serviceData.url) {
-                        window.open(serviceData.url, '_blank');
-                    } else {
-                        checkbox.checked = !checkbox.checked;
-                        if (checkbox.checked) {
-                            serviceItem.classList.add('selected');
-                        } else {
-                            serviceItem.classList.remove('selected');
-                        }
-                    }
-                });
-                
-                // Tooltip
-                if (serviceData.description) {
-                    const tooltip = document.createElement('div');
-                    tooltip.className = 'tooltip absolute z-10 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg top-0 left-full ml-2';
-                    tooltip.textContent = serviceData.description;
-                    serviceItem.appendChild(tooltip);
-                }
-                
-                // Click handler for the whole service item
-                serviceItem.addEventListener('click', function(e) {
-                    if (e.target !== checkbox && e.target !== serviceNameElem) {
-                        checkbox.checked = !checkbox.checked;
-                        if (checkbox.checked) {
-                            serviceItem.classList.add('selected');
-                        } else {
-                            serviceItem.classList.remove('selected');
-                        }
-                    }
-                });
-                
-                // Append elements
-                serviceItem.appendChild(checkbox);
-                serviceItem.appendChild(icon);
-                serviceItem.appendChild(serviceNameElem);
-                
-                return serviceItem;
-            }
-
-            // Search functionality
+            
+            // Setup search functionality
             searchInput.addEventListener('input', function() {
-                const searchTerm = this.value.toLowerCase().trim();
-                const categories = document.querySelectorAll('[data-category]');
-                
-                if (searchTerm === '') {
-                    // Reset all visibility when search is cleared
-                    categories.forEach(category => {
-                        category.style.display = 'block';
-                        category.querySelectorAll('.service-item').forEach(service => {
-                            service.style.display = 'flex';
-                            
-                            // Remove any existing highlights
-                            const serviceName = service.querySelector('.service-name');
-                            serviceName.innerHTML = serviceName.textContent;
-                        });
-                    });
-                    return;
-                }
+                const searchTerm = this.value.toLowerCase();
+                const categories = document.querySelectorAll('.category');
                 
                 categories.forEach(category => {
-                    const services = category.querySelectorAll('.service-item');
+                    const services = category.querySelectorAll('.service');
                     let hasVisibleServices = false;
                     
                     services.forEach(service => {
-                        const serviceNameElem = service.querySelector('.service-name');
-                        const serviceName = serviceNameElem.textContent.toLowerCase();
-                        
-                        if (serviceName.includes(searchTerm)) {
-                            service.style.display = 'flex';
-                            hasVisibleServices = true;
-                            
-                            // Highlight the matching text
-                            const regex = new RegExp(`(${searchTerm})`, 'gi');
-                            serviceNameElem.innerHTML = serviceNameElem.textContent.replace(
-                                regex, 
-                                '<span class="search-highlight">$1</span>'
-                            );
-                        } else {
-                            service.style.display = 'none';
-                        }
+                        const serviceNameElement = service.querySelector('.service-name');
+                        const serviceName = serviceNameElement ? (serviceNameElement.dataset.serviceName || serviceNameElement.textContent.toLowerCase()) : '';
+                        const shouldShow = serviceName.includes(searchTerm);
+                        service.closest('.service-item').style.display = shouldShow ? 'block' : 'none';
+                        if (shouldShow) hasVisibleServices = true;
                     });
                     
                     category.style.display = hasVisibleServices ? 'block' : 'none';
                 });
             });
-
-            // Select all button
+            
+            // Select all button functionality
             selectAllBtn.addEventListener('click', function() {
                 const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-                checkboxes.forEach(cb => {
-                    cb.checked = true;
-                    cb.closest('.service-item').classList.add('selected');
-                });
+                checkboxes.forEach(cb => cb.checked = true);
             });
             
-            // Deselect all button
+            // Deselect all button functionality
             deselectAllBtn.addEventListener('click', function() {
                 const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-                checkboxes.forEach(cb => {
-                    cb.checked = false;
-                    cb.closest('.service-item').classList.remove('selected');
-                });
+                checkboxes.forEach(cb => cb.checked = false);
             });
-
-            // Generate and copy button
-            generateBtn.addEventListener('click', function() {
-                const selectedCheckboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+            
+            // Setup generate and copy button
+            generateAndCopyBtn.addEventListener('click', function() {
+                const selectedCIDRs = [];
+                const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
                 
-                if (selectedCheckboxes.length === 0) {
-                    // Show alert if no services selected
+                if (checkboxes.length === 0) {
                     alert('Please select at least one service');
                     return;
                 }
                 
-                const selectedCIDRs = [];
-                
-                // Collect CIDRs from selected services
-                selectedCheckboxes.forEach(checkbox => {
+                for (const checkbox of checkboxes) {
                     const category = checkbox.dataset.category;
                     const service = checkbox.dataset.service;
                     
                     if (servicesData[category] && servicesData[category].services[service]) {
                         selectedCIDRs.push(...servicesData[category].services[service].cidrs);
                     }
-                });
+                }
                 
                 if (selectedCIDRs.length > 0) {
-                    // Remove duplicates and sort
-                    const uniqueCIDRs = [...new Set(selectedCIDRs)].sort();
+                    // Remove duplicate CIDRs
+                    const uniqueCIDRs = [...new Set(selectedCIDRs)];
                     
-                    // Update output
+                    // Join with commas
                     output.value = uniqueCIDRs.join(',');
-                    outputContainer.classList.remove('hidden');
                     
-                    // Scroll to output
-                    outputContainer.scrollIntoView({ behavior: 'smooth' });
+                    // Copy to clipboard
+                    output.select();
+                    
+                    try {
+                        const successful = document.execCommand('copy');
+                        if (successful) {
+                            notification.style.display = 'block';
+                            setTimeout(() => {
+                                notification.style.display = 'none';
+                            }, 2000);
+                        } else {
+                            throw new Error('Copy command failed');
+                        }
+                    } catch (err) {
+                        // For modern browsers
+                        if (navigator.clipboard) {
+                            navigator.clipboard.writeText(output.value)
+                                .then(() => {
+                                    notification.style.display = 'block';
+                                    setTimeout(() => {
+                                        notification.style.display = 'none';
+                                    }, 2000);
+                                })
+                                .catch(err => {
+                                    console.error('Failed to copy text: ', err);
+                                    alert('Failed to copy text to clipboard');
+                                });
+                        } else {
+                            console.error('Could not copy text: ', err);
+                            alert('Failed to copy text to clipboard. Your browser may not support this feature.');
+                        }
+                    }
                 } else {
                     alert('No IP ranges found for selected services');
                 }
             });
             
-            // Copy button
-            copyBtn.addEventListener('click', function() {
-                output.select();
-                
-                try {
-                    document.execCommand('copy');
-                    showNotification();
-                } catch (err) {
-                    navigator.clipboard.writeText(output.value)
-                        .then(() => showNotification())
-                        .catch(err => {
-                            alert('Failed to copy to clipboard: ' + err);
-                        });
-                }
-            });
-            
-            // Show notification
-            function showNotification() {
-                notification.classList.remove('hidden');
-                setTimeout(() => {
-                    notification.classList.add('hidden');
-                }, 3000);
-            }
-            
-            // Initialize
+            // Load and render data when page loads
             renderCategoriesAndServices();
         });
     </script>

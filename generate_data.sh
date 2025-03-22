@@ -72,25 +72,13 @@ find "$CONFIG_DIR" -mindepth 1 -maxdepth 1 -type d | while read -r category_path
         # Extract data from service file
         if [ "$HAS_JQ" -eq 1 ]; then
             # Extract using jq
-            url=$(jq -r '.url // ""' "$service_file")
             cidrs=$(jq -c '.cidr4 // []' "$service_file")
             
-            # Extract domain from URL
-            if [ -n "$url" ]; then
-                domain=$(echo "$url" | sed -E 's#^https?://([^/]+).*#\1#')
-            else
-                # Fallback to first domain from domains array
-                domain=$(jq -r '.domains[0] // ""' "$service_file")
-            fi
+            # Use service name as the main domain
+            domain="$service_name"
             
             # Get description from descriptions.json
             description=$(echo "$DESCRIPTIONS" | jq -r --arg domain "$domain" '.[$domain] // "Access website and services"')
-            
-            # Skip if no domain or CIDR found
-            if [ -z "$domain" ]; then
-                echo "    No domain found, skipping"
-                continue
-            fi
             
             # Skip if no CIDRs (checking if cidrs is empty array or empty string)
             if [ "$cidrs" = "[]" ] || [ -z "$cidrs" ]; then
@@ -101,7 +89,7 @@ find "$CONFIG_DIR" -mindepth 1 -maxdepth 1 -type d | while read -r category_path
             # Add service to JSON
             jq --arg cat "$category" \
                --arg name "$service_name" \
-               --arg url "$url" \
+               --arg url "https://$domain" \
                --arg desc "$description" \
                --argjson cidrs "$cidrs" \
                '.categories[$cat].services[$name] = {"url": $url, "description": $desc, "cidrs": $cidrs}' \
@@ -109,22 +97,10 @@ find "$CONFIG_DIR" -mindepth 1 -maxdepth 1 -type d | while read -r category_path
             mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
         else
             # Extract using grep/sed (less reliable)
-            url=$(grep -o '"url":\s*"[^"]*"' "$service_file" | sed 's/"url":\s*"\([^"]*\)"/\1/')
             cidrs=$(grep -o '"cidr4":\s*\[[^]]*\]' "$service_file" | sed 's/"cidr4":\s*\[\(.*\)\]/\1/')
             
-            # Extract domain from URL
-            if [ -n "$url" ]; then
-                domain=$(echo "$url" | sed -E 's#^https?://([^/]+).*#\1#')
-            else
-                # Fallback to first domain from domains array
-                domain=$(grep -o '"domains":\s*\[[^]]*\]' "$service_file" | sed 's/"domains":\s*\[\s*"\([^"]*\).*/\1/')
-            fi
-            
-            # Skip if no domain or CIDR found
-            if [ -z "$domain" ]; then
-                echo "    No domain found, skipping"
-                continue
-            fi
+            # Use service name as the main domain
+            domain="$service_name"
             
             # Skip if no CIDRs (checking if cidrs is empty array or empty string)
             if [ "$cidrs" = "[]" ] || [ -z "$cidrs" ]; then
@@ -139,7 +115,7 @@ find "$CONFIG_DIR" -mindepth 1 -maxdepth 1 -type d | while read -r category_path
             fi
             
             # Add service to JSON
-            service_json="{\"url\":\"$url\",\"description\":\"$description\",\"cidrs\":$cidrs}"
+            service_json="{\"url\":\"https://$domain\",\"description\":\"$description\",\"cidrs\":$cidrs}"
             sed -i "s/\"services\": {}/\"services\": {\"$service_name\": $service_json}/g" "$OUTPUT_FILE"
         fi
     done

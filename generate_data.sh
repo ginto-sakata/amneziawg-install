@@ -3,6 +3,7 @@
 # Directory containing the IP list configuration files
 CONFIG_DIR="${1:-./iplist/config}"
 OUTPUT_FILE="${2:-./static_website/data.json}"
+DESCRIPTIONS_FILE="${3:-./descriptions.json}"
 
 echo "Generating data from $CONFIG_DIR to $OUTPUT_FILE..."
 
@@ -25,6 +26,15 @@ else
     echo "Warning: jq not found, will use basic text processing (less reliable)"
     echo "Install jq for better results: apt-get install jq"
     HAS_JQ=0
+fi
+
+# Load descriptions
+if [ -f "$DESCRIPTIONS_FILE" ]; then
+    echo "Loading descriptions from $DESCRIPTIONS_FILE"
+    DESCRIPTIONS=$(cat "$DESCRIPTIONS_FILE")
+else
+    echo "Warning: descriptions.json not found"
+    DESCRIPTIONS="{}"
 fi
 
 # Process each category directory
@@ -59,49 +69,62 @@ find "$CONFIG_DIR" -mindepth 1 -maxdepth 1 -type d | while read -r category_path
         
         echo "  Processing service: $service_name"
         
-        # Create display name
-        display_name=$(echo "$service_name" | sed -E 's/\./-/g' | sed -E 's/(^|-)([a-z])/\U\2/g')
-        
         # Extract data from service file
         if [ "$HAS_JQ" -eq 1 ]; then
             # Extract using jq
-            domain=$(jq -r '.domains[0] // ""' "$service_file")
+            domain=$(jq -r '.domain // ""' "$service_file")
             cidrs=$(jq -c '.cidr4 // []' "$service_file")
-        else
-            # Extract using grep/sed
-            domain=$(grep -o '"domains":\s*\[[^]]*\]' "$service_file" | sed 's/"domains":\s*\[\s*"\([^"]*\).*/\1/')
-            cidrs=$(grep -o '"cidr4":\s*\[[^]]*\]' "$service_file" | sed 's/"cidr4":\s*\[\(.*\)\]/\1/')
-        fi
-        
-        # Skip if no domain or CIDR found
-        if [ -z "$domain" ]; then
-            domain="$service_name"
-        fi
-        
-        # Skip if no CIDRs (checking if cidrs is empty array or empty string)
-        if [ "$cidrs" = "[]" ] || [ -z "$cidrs" ]; then
-            echo "    No CIDRs found, skipping"
-            continue
-        fi
-        
-        # Add service to JSON
-        if [ "$HAS_JQ" -eq 1 ]; then
-            # Add service using jq
+            
+            # Get description from descriptions.json
+            description=$(echo "$DESCRIPTIONS" | jq -r --arg domain "$domain" '.[$domain] // "Access website and services"')
+            
+            # Skip if no domain or CIDR found
+            if [ -z "$domain" ]; then
+                echo "    No domain found, skipping"
+                continue
+            fi
+            
+            # Skip if no CIDRs (checking if cidrs is empty array or empty string)
+            if [ "$cidrs" = "[]" ] || [ -z "$cidrs" ]; then
+                echo "    No CIDRs found, skipping"
+                continue
+            fi
+            
+            # Add service to JSON
             jq --arg cat "$category" \
-               --arg name "$display_name" \
+               --arg name "$service_name" \
                --arg url "https://$domain" \
-               --arg desc "Access $display_name website and services" \
+               --arg desc "$description" \
                --argjson cidrs "$cidrs" \
                '.categories[$cat].services[$name] = {"url": $url, "description": $desc, "cidrs": $cidrs}' \
                "$OUTPUT_FILE" > "$OUTPUT_FILE.tmp"
             mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
         else
-            # This is a simplified approach and might not work for all cases
-            # It's best to install jq for reliable JSON manipulation
-            service_json="{\"url\":\"https://$domain\",\"description\":\"Access $display_name website and services\",\"cidrs\":$cidrs}"
-            sed -i "s/\"services\": {}/\"services\": {\"$display_name\": $service_json}/g" "$OUTPUT_FILE"
-            # Fix possible duplicate entries
-            sed -i "s/\"services\": {\"$display_name\"/\"services\": {\"$display_name\"/g" "$OUTPUT_FILE"
+            # Extract using grep/sed (less reliable)
+            domain=$(grep -o '"domain":\s*"[^"]*"' "$service_file" | sed 's/"domain":\s*"\([^"]*\)"/\1/')
+            cidrs=$(grep -o '"cidr4":\s*\[[^]]*\]' "$service_file" | sed 's/"cidr4":\s*\[\(.*\)\]/\1/')
+            
+            # Skip if no domain or CIDR found
+            if [ -z "$domain" ]; then
+                echo "    No domain found, skipping"
+                continue
+            fi
+            
+            # Skip if no CIDRs (checking if cidrs is empty array or empty string)
+            if [ "$cidrs" = "[]" ] || [ -z "$cidrs" ]; then
+                echo "    No CIDRs found, skipping"
+                continue
+            fi
+            
+            # Get description from descriptions.json
+            description=$(echo "$DESCRIPTIONS" | grep -o "\"$domain\":\s*\"[^\"]*\"" | sed "s/\"$domain\":\s*\"\([^\"]*\)\"/\1/")
+            if [ -z "$description" ]; then
+                description="Access website and services"
+            fi
+            
+            # Add service to JSON
+            service_json="{\"url\":\"https://$domain\",\"description\":\"$description\",\"cidrs\":$cidrs}"
+            sed -i "s/\"services\": {}/\"services\": {\"$service_name\": $service_json}/g" "$OUTPUT_FILE"
         fi
     done
 done

@@ -27,7 +27,7 @@ fi
 # 2. Generate data
 echo "Generating data from iplist repository..."
 chmod +x generate_data.sh
-./generate_data.sh ./iplist/config ./static_website/data.json
+./generate_data.sh ./iplist/config ./static_website/data.json ./descriptions.json
 
 # 3. Transform data for better organization
 echo "Transforming data for website display..."
@@ -55,7 +55,6 @@ elif command -v php &>/dev/null; then
 elif command -v npx &>/dev/null; then
     npx http-server -p $WEB_PORT
 else
-    echo "Error: No suitable web server found."
-    echo "Please install Python, PHP, or Node.js to serve the website."
+    echo "No suitable web server found. Please install Python, PHP, or Node.js."
     exit 1
 fi

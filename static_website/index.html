@@ -440,7 +440,19 @@
                 servicesData[formattedCategoryName] = { services: {} };
                 
                 // Priority services to show first (YouTube, Discord, Telegram, etc.)
-                const priorityServices = ['YouTube', 'Discord', 'Telegram', 'Netflix', 'Spotify'];
+                const priorityServices = [
+                    'YouTube', 'Discord', 'Telegram', 'Netflix', 'Spotify',
+                    'ChatGPT', 'Claude', 'X (Twitter)', 'Instagram', 'Facebook',
+                    'WhatsApp', 'Signal', 'BBC', 'DW', 'HRW',
+                    'OVD-Info', 'The Village', 'Moscow Times', 'Novaya Gazeta',
+                    'Anilibria.TV', 'Nyaa.si', 'Nyaa.land',
+                    'Danbooru', 'Gelbooru',
+                    'PornHub', 'XHamster', 'XHamster Live', 'XNXX', 'XVideos',
+                    '10MinuteMail', 'Garmin Connect', 'JetBrains', 'JetBrains CDN',
+                    'JetBrains Grazie', 'Linktree', 'TrainingPeaks',
+                    '1337x', 'The Pirate Bay', 'RuTracker', 'Rutor', 'NNM-Club',
+                    'Ralph Lauren'
+                ];
                 
                 // Get and sort services
                 let serviceEntries = Object.entries(categoryData.services);
@@ -599,6 +611,9 @@
                     .replace(/^NnmclubTo$/, 'NNM-Club')
                     // Handle shop sites
                     .replace(/^RalphlaurenEu$/, 'Ralph Lauren')
+                    // Handle AI services
+                    .replace(/^ChatgptCom$/, 'ChatGPT')
+                    .replace(/^ClaudeAi$/, 'Claude')
                     // Then handle general cases
                     .replace(/\.(com|org|net|io|ai|tv|ru|eu|ag|fm|club|live|pro|online|info)$/i, '')
                     .replace(/\./g, ' ')

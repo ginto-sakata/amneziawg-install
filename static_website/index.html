@@ -7,15 +7,14 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
+            margin: 0;
             padding: 20px;
             background-color: #f8f8f8;
             color: #333;
         }
         h1 {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             color: #333;
             font-size: 24px;
         }
@@ -24,84 +23,81 @@
             border-radius: 8px;
             padding: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 1400px;
+            margin: 0 auto;
         }
-        .categories-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 30px;
+        .search-container {
+            margin-bottom: 20px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .categories-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
         }
         .category {
-            margin-bottom: 10px;
+            flex: 1;
+            min-width: 200px;
+            margin-bottom: 20px;
         }
         .category-title {
             font-size: 18px;
             font-weight: bold;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             padding-bottom: 5px;
             border-bottom: 1px solid #ddd;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .services-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
+        .category-select-all {
+            font-size: 12px;
+            color: #2196F3;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .services-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .service-item {
+            margin-bottom: 6px;
         }
         .service {
             display: flex;
             align-items: center;
             padding: 5px;
             border-radius: 4px;
-            position: relative;
+            cursor: pointer;
         }
         .service:hover {
             background-color: #f5f5f5;
         }
         .service-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 10px;
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
             object-fit: contain;
-            background-color: #f0f0f0;
-            border-radius: 4px;
         }
         .service-checkbox {
             margin-right: 8px;
+            cursor: pointer;
         }
         .service-name {
             font-size: 14px;
         }
-        .service-url {
-            font-size: 12px;
-            color: #888;
-            margin-left: 5px;
-        }
-        .service-tooltip {
-            visibility: hidden;
-            width: 200px;
-            background-color: #555;
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 5px;
-            position: absolute;
-            z-index: 1;
-            bottom: 125%;
-            left: 50%;
-            margin-left: -100px;
-            opacity: 0;
-            transition: opacity 0.3s;
-            font-size: 12px;
-        }
-        .service:hover .service-tooltip {
-            visibility: visible;
-            opacity: 1;
-        }
         .actions {
             display: flex;
             justify-content: center;
-            margin-top: 30px;
+            margin-top: 20px;
         }
         button {
             background-color: #4CAF50;
@@ -150,12 +146,6 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .category-select-all {
-            font-size: 12px;
-            color: #2196F3;
-            cursor: pointer;
-            display: inline-block;
-        }
         .notification {
             position: fixed;
             bottom: 20px;
@@ -170,21 +160,15 @@
             z-index: 999;
             font-weight: bold;
         }
-        @media (max-width: 768px) {
-            .services-grid {
-                grid-template-columns: repeat(1, 1fr);
-            }
-        }
-        .search-container {
-            margin-bottom: 20px;
-        }
-        .search-input {
-            width: 100%;
-            padding: 10px;
+        .select-all-button {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 5px 10px;
             border-radius: 4px;
-            border: 1px solid #ddd;
-            box-sizing: border-box;
-            font-size: 16px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 10px;
         }
     </style>
 </head>
@@ -198,7 +182,12 @@
         
         <div id="loader" class="loader"></div>
         
-        <div id="categories" class="categories-grid">
+        <div class="actions">
+            <button class="select-all-button" id="select-all-btn">Select All</button>
+            <button class="select-all-button" id="deselect-all-btn">Deselect All</button>
+        </div>
+        
+        <div id="categories" class="categories-container">
             <!-- Categories and services will be loaded here -->
             <div class="loading">Loading categories and services...</div>
         </div>
@@ -218,6 +207,7 @@
     <script>
         // Store loaded service data
         const servicesData = {};
+        let serviceDescriptions = {};
         
         document.addEventListener('DOMContentLoaded', async function() {
             const loader = document.getElementById('loader');
@@ -227,6 +217,25 @@
             const output = document.getElementById('output');
             const notification = document.getElementById('notification');
             const searchInput = document.getElementById('search-input');
+            const selectAllBtn = document.getElementById('select-all-btn');
+            const deselectAllBtn = document.getElementById('deselect-all-btn');
+            
+            // These are better descriptions for common service types
+            serviceDescriptions = {
+                "video": "Video streaming and hosting",
+                "torrent": "Torrent tracking and downloading",
+                "social": "Social networks and platforms",
+                "news": "News aggregation and websites",
+                "music": "Music streaming and downloads",
+                "gaming": "Gaming platforms and stores",
+                "messaging": "Messaging and communications",
+                "adult": "Adult content and entertainment",
+                "general": "General websites and services",
+                "shop": "Online shopping and e-commerce",
+                "education": "Educational resources and platforms",
+                "productivity": "Productivity tools and services",
+                "tools": "Development tools and utilities",
+            };
             
             // Function to load service data from JSON file
             async function loadServiceData() {
@@ -234,8 +243,8 @@
                 categoriesContainer.innerHTML = '';
                 
                 try {
-                    // Fetch the data.json file
-                    const response = await fetch('data.json');
+                    // Fetch the data.json file with correct path handling
+                    const response = await fetch('./data.json');
                     if (!response.ok) {
                         throw new Error(`Failed to load data.json: ${response.status} ${response.statusText}`);
                     }
@@ -247,13 +256,15 @@
                     }
                     
                     // Process each category
-                    for (const [categoryName, categoryData] of Object.entries(data.categories)) {
+                    const sortedCategories = Object.entries(data.categories).sort((a, b) => a[0].localeCompare(b[0]));
+                    
+                    for (const [categoryName, categoryData] of sortedCategories) {
                         if (!categoryData.services || Object.keys(categoryData.services).length === 0) {
                             console.warn(`No services found for category ${categoryName}`);
                             continue;
                         }
                         
-                        await createCategoryElement(categoryName, categoryData);
+                        createCategoryElement(categoryName, categoryData);
                     }
                     
                 } catch (error) {
@@ -265,7 +276,7 @@
             }
             
             // Function to create a category element and its services
-            async function createCategoryElement(categoryName, categoryData) {
+            function createCategoryElement(categoryName, categoryData) {
                 // Create category container
                 const categoryDiv = document.createElement('div');
                 categoryDiv.className = 'category';
@@ -298,21 +309,28 @@
                 categoryHeader.appendChild(selectAll);
                 categoryDiv.appendChild(categoryHeader);
                 
-                const servicesGrid = document.createElement('div');
-                servicesGrid.className = 'services-grid';
+                const servicesList = document.createElement('ul');
+                servicesList.className = 'services-list';
                 
                 // Save category services in our data structure
                 servicesData[formattedCategoryName] = { services: {} };
                 
                 // Process services in the category
-                for (const [serviceName, serviceData] of Object.entries(categoryData.services)) {
+                const serviceEntries = Object.entries(categoryData.services);
+                
+                for (const [serviceName, serviceData] of serviceEntries) {
                     servicesData[formattedCategoryName].services[serviceName] = serviceData;
                     
+                    // Create service list item
+                    const serviceItem = document.createElement('li');
+                    serviceItem.className = 'service-item';
+                    
                     const serviceDiv = createServiceElement(formattedCategoryName, serviceName, serviceData);
-                    servicesGrid.appendChild(serviceDiv);
+                    serviceItem.appendChild(serviceDiv);
+                    servicesList.appendChild(serviceItem);
                 }
                 
-                categoryDiv.appendChild(servicesGrid);
+                categoryDiv.appendChild(servicesList);
                 categoriesContainer.appendChild(categoryDiv);
             }
             
@@ -329,56 +347,40 @@
                 checkbox.dataset.category = category;
                 checkbox.dataset.service = serviceName;
                 
-                // Get service filename-friendly name (lowercase with dots)
-                const serviceFileName = serviceName.toLowerCase().replace(/ /g, ".");
-                
-                // Try to use local favicon first, then fallback to Google's service
-                const urlObj = new URL(serviceData.url);
-                const faviconUrl = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
+                // Create favicon URL - using Google's favicon service
+                let faviconUrl = '';
+                try {
+                    const urlObj = new URL(serviceData.url);
+                    faviconUrl = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=32`;
+                } catch (e) {
+                    // Fallback if URL is invalid
+                    faviconUrl = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
+                }
                 
                 const icon = document.createElement('img');
                 icon.className = 'service-icon';
                 icon.src = faviconUrl;
                 icon.alt = serviceName;
+                icon.loading = 'lazy';
                 icon.onerror = function() {
-                    // If local favicon fails, try Google's favicon service
-                    try {
-                        const urlObj = new URL(serviceData.url);
-                        this.src = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64`;
-                    } catch (e) {
-                        // If that fails too, use a generic icon
-                        this.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
-                    }
+                    this.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0iI2FhYSI+PHBhdGggZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOHMzLjU4IDggOCA4IDgtMy41OCA4LTgtMy41OC04LTgtOHptMCAxNGMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6Ii8+PC9zdmc+';
                 };
-                
-                const nameContainer = document.createElement('div');
                 
                 const name = document.createElement('span');
                 name.className = 'service-name';
                 name.textContent = serviceName;
                 
-                const url = document.createElement('span');
-                url.className = 'service-url';
-                try {
-                    const urlObj = new URL(serviceData.url);
-                    url.textContent = `(${urlObj.hostname})`;
-                } catch (e) {
-                    // Fallback if URL is invalid
-                    url.textContent = `(${serviceData.url})`;
-                }
-                
-                // Create tooltip with description
-                const tooltip = document.createElement('span');
-                tooltip.className = 'service-tooltip';
-                tooltip.textContent = serviceData.description || `Website for ${serviceName}`;
-                
-                nameContainer.appendChild(name);
-                nameContainer.appendChild(url);
-                
+                // Add service elements to the service div
                 serviceDiv.appendChild(checkbox);
                 serviceDiv.appendChild(icon);
-                serviceDiv.appendChild(nameContainer);
-                serviceDiv.appendChild(tooltip);
+                serviceDiv.appendChild(name);
+                
+                // Make entire div clickable
+                serviceDiv.addEventListener('click', function(e) {
+                    if (e.target !== checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                    }
+                });
                 
                 return serviceDiv;
             }
@@ -395,11 +397,27 @@
                     services.forEach(service => {
                         const serviceName = service.dataset.serviceName || '';
                         const shouldShow = serviceName.includes(searchTerm);
-                        service.style.display = shouldShow ? 'flex' : 'none';
+                        service.closest('.service-item').style.display = shouldShow ? 'block' : 'none';
                         if (shouldShow) hasVisibleServices = true;
                     });
                     
                     category.style.display = hasVisibleServices ? 'block' : 'none';
+                });
+            });
+            
+            // Select all button functionality
+            selectAllBtn.addEventListener('click', function() {
+                const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                });
+            });
+            
+            // Deselect all button functionality
+            deselectAllBtn.addEventListener('click', function() {
+                const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
                 });
             });
             

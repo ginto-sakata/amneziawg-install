@@ -361,6 +361,21 @@
                 try {
                     const { categories, services, descriptions, cidrs } = await loadServiceData();
                     
+                    // Priority services to show first
+                    const priorityServices = [
+                        'youtube.com', 'discord.com', 'telegram.org', 'netflix.com', 'spotify.com',
+                        'chatgpt.com', 'claude.ai', 'x.com', 'instagram.com', 'facebook.com',
+                        'whatsapp.com', 'signal.org', 'bbc.com', 'dw.com', 'hrw.org',
+                        'ovd.info', 'thevillage.ru', 'moscowtimes.ru', 'novayagazeta.ru',
+                        'anilibria.tv', 'nyaa.si', 'nyaa.land',
+                        'danbooru.donmai.us', 'gelbooru.com',
+                        'pornhub.com', 'xhamster.com', 'xhamsterlive.com', 'xnxx.ru.com', 'xvideos.com',
+                        '10minutemail.com', 'connect.garmin.com', 'jetbrains.com', 'jetbrains@cdn',
+                        'jetbrains@grazie.ai', 'linktr.ee', 'trainingpeaks.com',
+                        '1337x.to', 'thepiratebay.org', 'rutracker.org', 'rutor.info', 'nnmclub.to',
+                        'ralphlauren.eu'
+                    ];
+                    
                     // Sort categories according to priority
                     const sortedCategories = Object.keys(categories).sort((a, b) => {
                         const indexA = categoryPriority.indexOf(a);

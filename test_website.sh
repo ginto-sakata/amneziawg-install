@@ -3,7 +3,11 @@
 
 # Set variables
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SERVER_IP=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v 127.0.0.1 | head -1)
+# Try to get domain name, fallback to IP if not available
+SERVER_DOMAIN=$(hostname -f 2>/dev/null || hostname)
+if [ -z "$SERVER_DOMAIN" ] || [ "$SERVER_DOMAIN" = "localhost" ]; then
+    SERVER_DOMAIN=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v 127.0.0.1 | head -1)
+fi
 WEB_PORT=8080
 
 echo "Working directory: $SCRIPT_DIR"
@@ -36,7 +40,7 @@ chmod +x update_layout.sh
 ./update_layout.sh
 
 # 5. Serve website for testing
-echo "Starting web server at http://${SERVER_IP}:${WEB_PORT}"
+echo "Starting web server at http://${SERVER_DOMAIN}:${WEB_PORT}"
 echo "Please open this URL in your browser."
 echo "After selecting services, click 'Generate IP List' and copy the result."
 echo "Press Ctrl+C when done to stop the server."

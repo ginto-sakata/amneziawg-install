@@ -56,17 +56,22 @@
         }
         .categories-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px;
             margin-bottom: 15px;
         }
         .category {
-            margin-bottom: 8px;
+            margin-bottom: 0;
             display: flex;
             flex-direction: column;
             border: 1px solid #eee;
             border-radius: 4px;
             padding: 8px;
+        }
+        /* Make News and Media categories double-wide */
+        .category[data-category="News"],
+        .category[data-category="Media"] {
+            grid-column: span 2;
         }
         .category-header {
             display: flex;
@@ -82,10 +87,35 @@
             color: #333;
             margin: 0;
         }
+        .category-header-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .category-icon-button {
+            width: 16px;
+            height: 16px;
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            opacity: 0.7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .category-icon-button:hover {
+            opacity: 1;
+        }
+        .category-icon-button svg {
+            width: 16px;
+            height: 16px;
+            fill: #2196F3;
+        }
         .services-list {
             list-style: none;
             padding: 0;
-            margin: 0 0 8px 0;
+            margin: 0;
             flex-grow: 1;
         }
         .category-actions {
@@ -401,6 +431,37 @@
                         categoryTitle.textContent = formattedCategoryName;
                         categoryHeader.appendChild(categoryTitle);
                         
+                        // Create header action buttons with icons
+                        const headerActions = document.createElement('div');
+                        headerActions.className = 'category-header-actions';
+                        
+                        // Create select all button with icon
+                        const selectAllBtn = document.createElement('button');
+                        selectAllBtn.className = 'category-icon-button';
+                        selectAllBtn.title = 'Select All';
+                        selectAllBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8l-9 9z"/></svg>';
+                        
+                        // Create deselect all button with icon
+                        const deselectAllBtn = document.createElement('button');
+                        deselectAllBtn.className = 'category-icon-button';
+                        deselectAllBtn.title = 'Deselect All';
+                        deselectAllBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2z"/></svg>';
+                        
+                        // Add click handlers
+                        selectAllBtn.addEventListener('click', function() {
+                            const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
+                            checkboxes.forEach(cb => cb.checked = true);
+                        });
+                        
+                        deselectAllBtn.addEventListener('click', function() {
+                            const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
+                            checkboxes.forEach(cb => cb.checked = false);
+                        });
+                        
+                        headerActions.appendChild(selectAllBtn);
+                        headerActions.appendChild(deselectAllBtn);
+                        categoryHeader.appendChild(headerActions);
+                        
                         categoryDiv.appendChild(categoryHeader);
                         
                         // Create services list
@@ -514,33 +575,6 @@
                         
                         // Add services list to category
                         categoryDiv.appendChild(servicesList);
-                        
-                        // Create category actions at the bottom
-                        const categoryActions = document.createElement('div');
-                        categoryActions.className = 'category-actions';
-                        
-                        // Create select/deselect buttons for this category
-                        const selectAllBtn = document.createElement('button');
-                        selectAllBtn.className = 'category-button';
-                        selectAllBtn.textContent = 'Select All';
-                        
-                        const deselectAllBtn = document.createElement('button');
-                        deselectAllBtn.className = 'category-button';
-                        deselectAllBtn.textContent = 'Deselect All';
-                        
-                        selectAllBtn.addEventListener('click', function() {
-                            const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
-                            checkboxes.forEach(cb => cb.checked = true);
-                        });
-                        
-                        deselectAllBtn.addEventListener('click', function() {
-                            const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
-                            checkboxes.forEach(cb => cb.checked = false);
-                        });
-                        
-                        categoryActions.appendChild(selectAllBtn);
-                        categoryActions.appendChild(deselectAllBtn);
-                        categoryDiv.appendChild(categoryActions);
                         
                         // Add category to container
                         categoriesContainer.appendChild(categoryDiv);

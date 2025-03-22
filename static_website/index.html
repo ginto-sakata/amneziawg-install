@@ -310,14 +310,25 @@
                     descriptions = await descriptionsResponse.json();
                     const cidrs = await cidrsResponse.json();
                     
+                    // Debug logging
+                    console.log('Categories:', categoriesData);
+                    console.log('Services:', services);
+                    console.log('Descriptions:', descriptions);
+                    console.log('CIDRs:', cidrs);
+                    
                     // Combine all data
-                    return {
+                    const result = {
                         categories: categoriesData.categories,
                         order: categoriesData.order,
                         services: services,
                         descriptions: descriptions,
                         cidrs: cidrs.services
                     };
+                    
+                    // Debug logging
+                    console.log('Combined data:', result);
+                    
+                    return result;
                 } catch (error) {
                     console.error('Error loading data:', error);
                     categoriesContainer.innerHTML = `<div>Error loading services: ${error.message}. Please try again.</div>`;
@@ -337,11 +348,20 @@
                 try {
                     const { categories, order, services, descriptions, cidrs } = await loadServiceData();
                     
+                    // Debug logging
+                    console.log('Categories to render:', categories);
+                    console.log('Order:', order);
+                    console.log('Services to render:', services);
+                    console.log('CIDRs to render:', cidrs);
+                    
                     // Clear existing content
                     categoriesContainer.innerHTML = '';
                     
                     // Use the order from categories.json
                     const sortedCategories = order;
+                    
+                    // Debug logging
+                    console.log('Sorted categories:', sortedCategories);
                     
                     // Render each category
                     for (const category of sortedCategories) {

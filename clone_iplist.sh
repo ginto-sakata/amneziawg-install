@@ -14,10 +14,10 @@ if [ -d "$IPLIST_DIR" ]; then
     cd "$WORKING_DIR"
 else
     echo "Cloning iplist repository..."
-    git clone -n --depth=1 --filter=tree:0 https://github.com/rekryt/iplist
+    git clone --depth=1 https://github.com/rekryt/iplist
     cd iplist
-    git sparse-checkout set --no-cone /config
-    git checkout
+    git sparse-checkout init
+    git sparse-checkout set config/
     cd "$WORKING_DIR"
 fi
 

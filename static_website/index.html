@@ -4,188 +4,91 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AmneziaWG Site Selection</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f8f8f8;
-            color: #333;
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #111827;
         }
-        h1 {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #333;
-            font-size: 24px;
-            font-weight: 600;
+        .category-card {
+            transition: all 0.2s ease;
+            border: 1px solid #e5e7eb;
         }
-        .container {
-            background-color: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .search-container {
-            margin-bottom: 15px;
-        }
-        .search-input {
-            width: 100%;
-            padding: 8px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-        .global-actions {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 15px;
-            gap: 8px;
-        }
-        .global-button {
-            background-color: #2196F3;
-            color: white;
-            border: none;
-            padding: 5px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-        }
-        .categories-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 12px;
-            margin-bottom: 15px;
-        }
-        .category {
-            margin-bottom: 0;
-            display: flex;
-            flex-direction: column;
-            border: 1px solid #eee;
-            border-radius: 4px;
-            padding: 8px;
-        }
-        /* Make News and Media categories double-wide */
-        .category[data-category="News"],
-        .category[data-category="Media"] {
-            grid-column: span 2;
-        }
-        .category-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #eee;
-        }
-        .category-title {
-            font-size: 15px;
-            font-weight: 600;
-            color: #333;
-            margin: 0;
-        }
-        .category-header-actions {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-        }
-        .category-icon-button {
-            width: 16px;
-            height: 16px;
-            background: none;
-            border: none;
-            padding: 0;
-            cursor: pointer;
-            opacity: 0.7;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .category-icon-button:hover {
-            opacity: 1;
-        }
-        .category-icon-button svg {
-            width: 16px;
-            height: 16px;
-            fill: #2196F3;
-        }
-        .services-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            flex-grow: 1;
-        }
-        .category-actions {
-            display: flex;
-            gap: 5px;
-            justify-content: flex-end;
-            padding-top: 6px;
-            border-top: 1px solid #eee;
-            font-size: 11px;
-        }
-        .category-button {
-            font-size: 11px;
-            color: #2196F3;
-            cursor: pointer;
-            background: none;
-            border: none;
-            padding: 2px 4px;
-            font-weight: 500;
+        .category-card:hover {
+            box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+            transform: translateY(-2px);
         }
         .service-item {
-            margin-bottom: 4px;
+            transition: background 0.15s ease;
         }
-        .service {
-            display: flex;
-            align-items: center;
-            padding: 3px;
-            border-radius: 3px;
-            cursor: pointer;
-            position: relative;
+        .service-item:hover {
+            background-color: #f9fafb;
         }
-        .service:hover {
-            background-color: #f5f5f5;
+        .service-item.selected {
+            background-color: #f0f9ff;
+            border-left: 3px solid #3b82f6;
         }
-        .service-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 6px;
-            object-fit: contain;
-            vertical-align: middle;
-            opacity: 0.9;
+        .service-item img {
+            filter: grayscale(0.5);
+            transition: filter 0.2s ease;
         }
-        img.favicon {
-            width: 24px;
-            height: 24px;
-            min-width: 24px;
-            min-height: 24px;
+        .service-item:hover img,
+        .service-item.selected img {
+            filter: grayscale(0);
         }
-        .service:hover .service-icon {
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+        .tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .service-item:hover .tooltip {
+            visibility: visible;
             opacity: 1;
         }
-        .service-checkbox {
-            margin-right: 6px;
-            cursor: pointer;
+        .search-highlight {
+            background-color: #fef3c7;
         }
-        .service-name {
-            font-size: 13px;
-            position: relative;
-            cursor: default;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .notification {
+            transform: translateX(-50%) translateY(100%);
+            animation: slideUp 0.3s forwards, fadeOut 0.3s 2s forwards;
         }
-        .service-name.link-active {
-            color: #2196F3;
-            text-decoration: underline;
-            cursor: pointer;
-            background-color: rgba(33, 150, 243, 0.1);
-            padding: 2px 4px;
-            border-radius: 3px;
+        @keyframes slideUp {
+            to {
+                transform: translateX(-50%) translateY(0);
+            }
         }
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                visibility: hidden;
+            }
+        }
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .dark-mode-toggle i {
+                color: #f3f4f6;
+            }
+        }
+        /* Service tooltip (keeping original functionality) */
         .service-tooltip {
             visibility: hidden;
             width: 250px;
@@ -208,87 +111,82 @@
             visibility: visible;
             opacity: 1;
         }
-        .notification {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 4px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            display: none;
-            z-index: 999;
-            font-weight: bold;
-        }
-        .loader {
-            display: none;
-            text-align: center;
-            margin: 20px 0;
-        }
-        /* Special handling for news category */
-        .category[data-category="News"] .services-list,
-        .category[data-category="Media"] .services-list {
-            column-count: 2;
-            column-gap: 15px;
-        }
-        .category[data-category="News"] .service-item,
-        .category[data-category="Media"] .service-item {
-            break-inside: avoid;
-        }
-        /* Help text styling */
-        .help-text {
-            text-align: center;
-            font-size: 11px;
-            color: #666;
-            margin-top: 4px;
-            margin-bottom: 12px;
-        }
-        kbd {
-            background-color: #f7f7f7;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-            box-shadow: 0 1px 0 rgba(0,0,0,0.2);
-            color: #333;
-            display: inline-block;
-            font-size: 10px;
-            line-height: 1;
+        /* Link active state (for CTRL clicking) */
+        .service-name.link-active {
+            color: #3b82f6;
+            text-decoration: underline;
+            cursor: pointer;
+            background-color: rgba(59, 130, 246, 0.1);
             padding: 2px 4px;
+            border-radius: 3px;
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>Pick the websites you want to route through AmnesiaWG</h1>
-        
-        <div class="search-container">
-            <input type="text" id="search-input" class="search-input" placeholder="Search for websites...">
+<body class="min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <header class="mb-8">
+            <div class="flex justify-between items-center mb-3">
+                <h1 class="text-3xl font-bold text-indigo-700">AmneziaWG Site Selection</h1>
+                <button class="dark-mode-toggle p-2 rounded-full hover:bg-gray-200 focus:outline-none" title="Toggle dark mode">
+                    <i class="fas fa-moon text-gray-700"></i>
+                </button>
+            </div>
+            <p class="text-gray-600 max-w-3xl">Select the websites and services you want to route through AmneziaWG's secure tunnel. Your selections will generate a list of IP ranges to use in your configuration.</p>
+        </header>
+
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <div class="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4 mb-6">
+                <div class="relative flex-grow">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </div>
+                    <input id="search-input" type="text" class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150" placeholder="Search websites and services...">
+                </div>
+                <div class="flex space-x-2">
+                    <button id="select-all-btn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
+                        <i class="fas fa-check-square mr-2"></i> Select All
+                    </button>
+                    <button id="deselect-all-btn" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
+                        <i class="fas fa-square mr-2"></i> Deselect All
+                    </button>
+                </div>
+            </div>
+
+            <div class="text-sm text-gray-500 italic mb-4 flex items-center">
+                <i class="fas fa-info-circle mr-2 text-indigo-500"></i>
+                <span>Pro tip: Hold <kbd class="px-2 py-1 bg-gray-100 rounded">CTRL</kbd> and click on a service name to open its website in a new tab</span>
+            </div>
+
+            <div id="loader" class="flex justify-center py-8 hidden">
+                <svg class="animate-spin h-10 w-10 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+
+            <div id="categories" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Categories will be dynamically loaded here -->
+                <div class="loading">Loading categories and services...</div>
+            </div>
         </div>
-        
-        <div class="help-text">
-            Pro tip: Hold <kbd>CTRL</kbd> and click on a website name to open it in a new tab.
-        </div>
-        
-        <div class="global-actions">
-            <button id="select-all-btn" class="global-button">Select All</button>
-            <button id="deselect-all-btn" class="global-button">Deselect All</button>
-            <button id="generate-and-copy-btn" class="global-button">Copy IP List</button>
-        </div>
-        
-        <div id="loader" class="loader"></div>
-        
-        <div id="categories" class="categories-grid">
-            <!-- Categories and services will be loaded here -->
-            <div class="loading">Loading categories and services...</div>
+
+        <div class="flex justify-center mb-8">
+            <button id="generate-and-copy-btn" class="inline-flex items-center px-6 py-3 border border-transparent text-lg font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">
+                <i class="fas fa-list-check mr-2"></i> Generate IP List & Copy to Clipboard
+            </button>
         </div>
 
         <!-- Hidden textarea for copying -->
-        <textarea id="output" style="position: absolute; left: -9999px; top: -9999px;"></textarea>
+        <textarea id="output" class="hidden w-full h-32 p-4 border border-gray-300 rounded-md shadow-inner font-mono text-sm bg-gray-50 focus:ring-indigo-500 focus:border-indigo-500" readonly></textarea>
     </div>
-    
-    <div id="notification" class="notification">Copied to clipboard!</div>
-    
+
+    <div id="notification" class="notification fixed bottom-8 left-1/2 bg-green-600 text-white px-6 py-3 rounded-md shadow-lg hidden">
+        <div class="flex items-center">
+            <i class="fas fa-check-circle mr-2"></i>
+            <span>Copied to clipboard!</span>
+        </div>
+    </div>
+
     <script>
         // Store loaded service data
         const servicesData = {};
@@ -303,10 +201,24 @@
             const searchInput = document.getElementById('search-input');
             const selectAllBtn = document.getElementById('select-all-btn');
             const deselectAllBtn = document.getElementById('deselect-all-btn');
+            const darkModeToggle = document.querySelector('.dark-mode-toggle');
             
             // Track if Ctrl key is pressed and currently hovered service
             let ctrlPressed = false;
             let hoveredService = null;
+            
+            // Dark mode toggle
+            darkModeToggle.addEventListener('click', function() {
+                document.documentElement.classList.toggle('dark');
+                const icon = this.querySelector('i');
+                if (icon.classList.contains('fa-moon')) {
+                    icon.classList.remove('fa-moon');
+                    icon.classList.add('fa-sun');
+                } else {
+                    icon.classList.remove('fa-sun');
+                    icon.classList.add('fa-moon');
+                }
+            });
             
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Control') {
@@ -379,7 +291,12 @@
                     return result;
                 } catch (error) {
                     console.error('Error loading data:', error);
-                    categoriesContainer.innerHTML = `<div>Error loading services: ${error.message}. Please try again.</div>`;
+                    categoriesContainer.innerHTML = `
+                        <div class="col-span-full p-8 text-center">
+                            <div class="text-red-600 mb-2"><i class="fas fa-exclamation-circle text-3xl"></i></div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-1">Error loading services</h3>
+                            <p class="text-gray-500">${error.message}. Please try refreshing the page.</p>
+                        </div>`;
                     throw error;
                 } finally {
                     loader.style.display = 'none';
@@ -416,57 +333,64 @@
                         const categoryData = categories[category];
                         const formattedCategoryName = categoryData.name;
                         
-                        // Create category container
+                        // Create category container - updated with Tailwind styles
                         const categoryDiv = document.createElement('div');
-                        categoryDiv.className = 'category';
+                        categoryDiv.className = 'category-card bg-white rounded-lg shadow-sm overflow-hidden';
                         categoryDiv.dataset.category = formattedCategoryName;
                         
-                        // Create category header
+                        // Create category header - updated with Tailwind styles
                         const categoryHeader = document.createElement('div');
-                        categoryHeader.className = 'category-header';
+                        categoryHeader.className = 'bg-gradient-to-r from-indigo-500 to-purple-600 p-4 text-white';
                         
-                        // Add category title
-                        const categoryTitle = document.createElement('h3');
-                        categoryTitle.className = 'category-title';
-                        categoryTitle.textContent = formattedCategoryName;
-                        categoryHeader.appendChild(categoryTitle);
+                        // Add category title and actions container
+                        const categoryTitle = document.createElement('div');
+                        categoryTitle.className = 'flex justify-between items-center';
                         
-                        // Create header action buttons with icons
+                        const title = document.createElement('h3');
+                        title.className = 'text-lg font-semibold';
+                        title.textContent = formattedCategoryName;
+                        
                         const headerActions = document.createElement('div');
-                        headerActions.className = 'category-header-actions';
+                        headerActions.className = 'flex space-x-2';
                         
-                        // Create select all button with icon
+                        // Create select all button
                         const selectAllBtn = document.createElement('button');
-                        selectAllBtn.className = 'category-icon-button';
-                        selectAllBtn.title = 'Select All';
-                        selectAllBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8l-9 9z"/></svg>';
+                        selectAllBtn.className = 'text-xs px-2 py-1 bg-white bg-opacity-20 hover:bg-opacity-30 rounded transition focus:outline-none';
+                        selectAllBtn.textContent = 'Select All';
                         
-                        // Create deselect all button with icon
+                        // Create deselect all button
                         const deselectAllBtn = document.createElement('button');
-                        deselectAllBtn.className = 'category-icon-button';
-                        deselectAllBtn.title = 'Deselect All';
-                        deselectAllBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2z"/></svg>';
+                        deselectAllBtn.className = 'text-xs px-2 py-1 bg-white bg-opacity-20 hover:bg-opacity-30 rounded transition focus:outline-none';
+                        deselectAllBtn.textContent = 'None';
                         
                         // Add click handlers
                         selectAllBtn.addEventListener('click', function() {
                             const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
-                            checkboxes.forEach(cb => cb.checked = true);
+                            checkboxes.forEach(cb => {
+                                cb.checked = true;
+                                cb.closest('.service-item').classList.add('selected');
+                            });
                         });
                         
                         deselectAllBtn.addEventListener('click', function() {
                             const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
-                            checkboxes.forEach(cb => cb.checked = false);
+                            checkboxes.forEach(cb => {
+                                cb.checked = false;
+                                cb.closest('.service-item').classList.remove('selected');
+                            });
                         });
                         
                         headerActions.appendChild(selectAllBtn);
                         headerActions.appendChild(deselectAllBtn);
-                        categoryHeader.appendChild(headerActions);
                         
+                        categoryTitle.appendChild(title);
+                        categoryTitle.appendChild(headerActions);
+                        categoryHeader.appendChild(categoryTitle);
                         categoryDiv.appendChild(categoryHeader);
                         
-                        // Create services list
-                        const servicesList = document.createElement('ul');
-                        servicesList.className = 'services-list';
+                        // Create services list - updated with Tailwind styles
+                        const servicesList = document.createElement('div');
+                        servicesList.className = 'p-3 max-h-80 overflow-y-auto';
                         
                         // Save category services in our data structure
                         servicesData[formattedCategoryName] = { services: {} };
@@ -485,43 +409,48 @@
                         
                         // Process services in the category
                         for (const [serviceId, serviceData] of serviceEntries) {
-                            // Create service container
-                            const serviceItem = document.createElement('li');
-                            serviceItem.className = 'service-item';
+                            // Create service container - updated with Tailwind styles
+                            const serviceItem = document.createElement('div');
+                            serviceItem.className = 'service-item flex items-center p-2 rounded-md cursor-pointer relative mb-1';
+                            serviceItem.dataset.serviceName = serviceId.toLowerCase();
                             
+                            // Create service div
                             const serviceDiv = document.createElement('div');
-                            serviceDiv.className = 'service';
+                            serviceDiv.className = 'service flex items-center w-full';
                             
                             // Create checkbox
                             const checkbox = document.createElement('input');
                             checkbox.type = 'checkbox';
-                            checkbox.className = 'service-checkbox';
+                            checkbox.className = 'h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-3';
                             checkbox.dataset.category = formattedCategoryName;
                             checkbox.dataset.service = serviceId;
-                            
-                            // Create icon container
-                            const icon = document.createElement('div');
-                            icon.className = 'service-icon';
+                            checkbox.addEventListener('change', function() {
+                                if (this.checked) {
+                                    serviceItem.classList.add('selected');
+                                } else {
+                                    serviceItem.classList.remove('selected');
+                                }
+                            });
                             
                             // Create favicon
                             const favicon = document.createElement('img');
-                            favicon.className = 'favicon';
+                            favicon.className = 'h-5 w-5 mr-3 flex-shrink-0';
                             favicon.alt = '';
                             favicon.src = `https://www.google.com/s2/favicons?domain=${serviceId}&sz=24`;
+                            favicon.loading = 'lazy';
                             favicon.onerror = function() {
                                 this.src = `https://www.google.com/s2/favicons?domain=${serviceId}&sz=16`;
                                 // Force size for smaller icons
-                                this.style.width = '24px';
-                                this.style.height = '24px';
+                                this.style.width = '20px';
+                                this.style.height = '20px';
                             };
-                            icon.appendChild(favicon);
                             
                             // Create service name
                             const name = document.createElement('span');
-                            name.className = 'service-name';
+                            name.className = 'service-name text-sm font-medium text-gray-700 flex-grow';
                             name.textContent = formatDisplayName(serviceId, services);
                             name.dataset.url = `https://${serviceId}`;
-                            name.dataset.serviceName = serviceId.toLowerCase(); // Add this for search functionality
+                            name.dataset.serviceName = serviceId.toLowerCase(); // For search functionality
                             
                             // Create tooltip with description
                             const tooltip = document.createElement('div');
@@ -530,7 +459,7 @@
                             
                             // Add service elements to the service div
                             serviceDiv.appendChild(checkbox);
-                            serviceDiv.appendChild(icon);
+                            serviceDiv.appendChild(favicon);
                             serviceDiv.appendChild(name);
                             serviceDiv.appendChild(tooltip);
                             
@@ -541,20 +470,25 @@
                             serviceDiv.addEventListener('click', function(e) {
                                 if (e.target !== checkbox) {
                                     checkbox.checked = !checkbox.checked;
+                                    if (checkbox.checked) {
+                                        serviceItem.classList.add('selected');
+                                    } else {
+                                        serviceItem.classList.remove('selected');
+                                    }
                                 }
                             });
                             
                             // Add hover effect for CTRL key
                             serviceDiv.addEventListener('mouseenter', function() {
-                                hoveredService = this;
+                                hoveredService = name;
                                 if (ctrlPressed) {
-                                    this.classList.add('link-active');
+                                    name.classList.add('link-active');
                                 }
                             });
                             
                             serviceDiv.addEventListener('mouseleave', function() {
                                 hoveredService = null;
-                                this.classList.remove('link-active');
+                                name.classList.remove('link-active');
                             });
                             
                             // Add click handler for opening URL with CTRL
@@ -581,25 +515,56 @@
                     }
                 } catch (error) {
                     console.error('Error rendering categories:', error);
-                    categoriesContainer.innerHTML = `<div>Error rendering categories: ${error.message}</div>`;
+                    categoriesContainer.innerHTML = `
+                        <div class="col-span-full p-8 text-center">
+                            <div class="text-red-600 mb-2"><i class="fas fa-exclamation-circle text-3xl"></i></div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-1">Error rendering categories</h3>
+                            <p class="text-gray-500">${error.message}</p>
+                        </div>`;
                 }
             }
             
             // Setup search functionality
             searchInput.addEventListener('input', function() {
-                const searchTerm = this.value.toLowerCase();
-                const categories = document.querySelectorAll('.category');
+                const searchTerm = this.value.toLowerCase().trim();
+                const categories = document.querySelectorAll('[data-category]');
+                
+                if (searchTerm === '') {
+                    // Reset all visibility when search is cleared
+                    categories.forEach(category => {
+                        category.style.display = 'block';
+                        category.querySelectorAll('.service-item').forEach(service => {
+                            service.style.display = 'flex';
+                            
+                            // Remove any existing highlights
+                            const serviceName = service.querySelector('.service-name');
+                            serviceName.innerHTML = serviceName.textContent;
+                        });
+                    });
+                    return;
+                }
                 
                 categories.forEach(category => {
-                    const services = category.querySelectorAll('.service');
+                    const services = category.querySelectorAll('.service-item');
                     let hasVisibleServices = false;
                     
                     services.forEach(service => {
-                        const serviceNameElement = service.querySelector('.service-name');
-                        const serviceName = serviceNameElement ? (serviceNameElement.dataset.serviceName || serviceNameElement.textContent.toLowerCase()) : '';
-                        const shouldShow = serviceName.includes(searchTerm);
-                        service.closest('.service-item').style.display = shouldShow ? 'block' : 'none';
-                        if (shouldShow) hasVisibleServices = true;
+                        const serviceNameElem = service.querySelector('.service-name');
+                        const serviceName = serviceNameElem ? (serviceNameElem.dataset.serviceName || serviceNameElem.textContent.toLowerCase()) : '';
+                        
+                        if (serviceName.includes(searchTerm)) {
+                            service.style.display = 'flex';
+                            hasVisibleServices = true;
+                            
+                            // Highlight the matching text
+                            const regex = new RegExp(`(${searchTerm})`, 'gi');
+                            serviceNameElem.innerHTML = serviceNameElem.textContent.replace(
+                                regex, 
+                                '<span class="search-highlight">$1</span>'
+                            );
+                        } else {
+                            service.style.display = 'none';
+                        }
                     });
                     
                     category.style.display = hasVisibleServices ? 'block' : 'none';
@@ -609,13 +574,19 @@
             // Select all button functionality
             selectAllBtn.addEventListener('click', function() {
                 const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-                checkboxes.forEach(cb => cb.checked = true);
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                    cb.closest('.service-item').classList.add('selected');
+                });
             });
             
             // Deselect all button functionality
             deselectAllBtn.addEventListener('click', function() {
                 const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-                checkboxes.forEach(cb => cb.checked = false);
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                    cb.closest('.service-item').classList.remove('selected');
+                });
             });
             
             // Setup generate and copy button
@@ -643,6 +614,7 @@
                     
                     // Join with commas
                     output.value = uniqueCIDRs.join(',');
+                    output.classList.remove('hidden');
                     
                     // Copy to clipboard
                     output.select();
@@ -650,9 +622,9 @@
                     try {
                         const successful = document.execCommand('copy');
                         if (successful) {
-                            notification.style.display = 'block';
+                            notification.classList.remove('hidden');
                             setTimeout(() => {
-                                notification.style.display = 'none';
+                                notification.classList.add('hidden');
                             }, 2000);
                         } else {
                             throw new Error('Copy command failed');
@@ -662,9 +634,9 @@
                         if (navigator.clipboard) {
                             navigator.clipboard.writeText(output.value)
                                 .then(() => {
-                                    notification.style.display = 'block';
+                                    notification.classList.remove('hidden');
                                     setTimeout(() => {
-                                        notification.style.display = 'none';
+                                        notification.classList.add('hidden');
                                     }, 2000);
                                 })
                                 .catch(err => {

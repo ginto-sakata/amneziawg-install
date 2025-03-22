@@ -18,7 +18,7 @@
         .category-card {
             transition: all 0.2s ease;
             border: 1px solid #e5e7eb;
-            height: calc((100vh - 300px) / 2);
+            height: 420px;
             display: flex;
             flex-direction: column;
         }
@@ -92,11 +92,11 @@
             border-radius: 4px;
             padding: 8px;
             position: absolute;
-            z-index: 20;
-            bottom: 125%; /* Changed to position above service item */
+            z-index: 9999;
+            bottom: 125%;
             left: 0;
             opacity: 0;
-            transition: opacity 0.3s;
+            transition: opacity 0.3s ease;
             font-size: 12px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
             pointer-events: none;
@@ -104,6 +104,12 @@
         .service-item:hover .service-tooltip {
             visibility: visible;
             opacity: 1;
+            transition-delay: 300ms;
+        }
+        .service-item:not(:hover) .service-tooltip {
+            transition: opacity 0.15s ease, visibility 0s 0.15s;
+            opacity: 0;
+            visibility: hidden;
         }
         .external-link-icon {
             color: #4f8bff;
@@ -130,18 +136,39 @@
                 height: 400px;
             }
         }
+        .category-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+        }
+        textarea#output {
+            height: 24px;
+        }
     </style>
 </head>
 <body class="min-h-screen">
     <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <header class="mb-6">
+        <header class="mb-6 relative">
             <div class="flex justify-between items-center mb-3">
-                <h1 class="text-3xl font-bold text-blue-600">AmneziaWG Site Selection</h1>
-                <button class="dark-mode-toggle p-2 rounded-full hover:bg-gray-200 focus:outline-none" title="Toggle dark mode">
-                    <i class="fas fa-moon text-gray-700"></i>
-                </button>
+                <div class="flex items-center">
+                    <img src="amnezia.png" alt="AmneziaWG Logo" class="h-12 w-12 mr-4" id="logo">
+                    <script>
+                        // 10% chance to show WireGuard logo
+                        if (Math.random() < 0.1) {
+                            document.getElementById('logo').src = 'wireguard.png';
+                        }
+                    </script>
+                    <h1 class="text-3xl font-bold text-blue-600">AmneziaWG \ WireGuard</h1>
+                </div>
+                <div class="flex items-center">
+                    <button class="dark-mode-toggle p-2 rounded-full hover:bg-gray-200 focus:outline-none" title="Toggle dark mode">
+                        <i class="fas fa-moon text-gray-700"></i>
+                    </button>
+                    <img src="rknchan.png" alt="RKN Chan" class="h-32 ml-4" style="margin-top: -60px;">
+                </div>
             </div>
-            <p class="text-gray-600 max-w-3xl">Select the websites and services you want to route through AmneziaWG's secure tunnel. Your selections will generate a list of IP ranges to use in your configuration.</p>
+            <p class="text-gray-600 max-w-3xl">Select the websites and services you want to route through AmneziaWG's secure tunnel.<br><br>
+            Your selections will generate a list of IP ranges to use in your client's configuration (AllowedIPs).</p>
         </header>
 
         <div class="bg-white rounded-xl shadow-md p-6 mb-8">
@@ -348,16 +375,48 @@
                         const categoryTitle = document.createElement('div');
                         categoryTitle.className = 'flex justify-between items-center';
                         
+                        // Add category icon
+                        const icon = document.createElement('img');
+                        icon.className = 'category-icon';
+                        icon.alt = '';
+                        
+                        // Set icon based on category
+                        switch(formattedCategoryName.toLowerCase()) {
+                            case 'streaming':
+                                icon.src = 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png';
+                                break;
+                            case 'gaming':
+                                icon.src = 'https://cdn-icons-png.flaticon.com/512/686/686589.png';
+                                break;
+                            case 'communication':
+                                icon.src = 'https://cdn-icons-png.flaticon.com/512/134/134914.png';
+                                break;
+                            case 'development':
+                                icon.src = 'https://cdn-icons-png.flaticon.com/512/1005/1005141.png';
+                                break;
+                            case 'social':
+                                icon.src = 'https://cdn-icons-png.flaticon.com/512/1384/1384014.png';
+                                break;
+                            default:
+                                icon.src = 'https://cdn-icons-png.flaticon.com/512/1828/1828791.png';
+                        }
+                        
+                        const titleContainer = document.createElement('div');
+                        titleContainer.className = 'flex items-center';
+                        
                         const title = document.createElement('h3');
                         title.className = 'text-base font-semibold';
                         title.textContent = formattedCategoryName;
+                        
+                        titleContainer.appendChild(icon);
+                        titleContainer.appendChild(title);
                         
                         const headerActions = document.createElement('div');
                         headerActions.className = 'flex space-x-1';
                         
                         // Create select all button - improved visibility
                         const selectAllBtn = document.createElement('button');
-                        selectAllBtn.className = 'text-xs px-2 py-1 bg-blue-600 text-white rounded transition focus:outline-none w-16';
+                        selectAllBtn.className = 'text-xs px-2 py-1 bg-blue-500 text-white rounded transition focus:outline-none w-16';
                         selectAllBtn.textContent = 'All';
                         
                         // Create deselect all button - improved visibility with white background
@@ -385,7 +444,7 @@
                         headerActions.appendChild(selectAllBtn);
                         headerActions.appendChild(deselectAllBtn);
                         
-                        categoryTitle.appendChild(title);
+                        categoryTitle.appendChild(titleContainer);
                         categoryTitle.appendChild(headerActions);
                         categoryHeader.appendChild(categoryTitle);
                         categoryDiv.appendChild(categoryHeader);

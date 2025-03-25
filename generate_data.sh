@@ -42,10 +42,12 @@ SERVICE_IDS=$(jq -r 'keys[]' "$SERVICES_FILE")
 
 # Process each service file in the config directory
 echo "Processing service files..."
-columns=3      # Set number of columns
-rows=20        # Set number of rows per column (not directly used for column layout anymore)
+rows=20        # Set number of rows per column
+col_width=15   # Width of each column (adjust if needed - reduced from 26)
 counter=0      # Keeps track of the printed service index
-col_width=26   # Width of each column (adjust if needed)
+col=0          # Current column index
+row_in_column=0 # Current row within the column
+
 
 find "$IPLIST_CONFIG_DIR" -name "*.json" -type f | while read -r service_file; do
     service_id=$(basename "$service_file" .json)
@@ -54,8 +56,6 @@ find "$IPLIST_CONFIG_DIR" -name "*.json" -type f | while read -r service_file; d
         continue
     fi
 
-    col=$((counter % columns))
-    row=$((counter / columns)) # Not used for vertical positioning anymore
 
     # Calculate spacing for columns
     col_offset=$((col * col_width))
@@ -65,6 +65,14 @@ find "$IPLIST_CONFIG_DIR" -name "*.json" -type f | while read -r service_file; d
     echo "" # Add a newline after each service ID
 
     counter=$((counter + 1))
+    row_in_column=$((row_in_column + 1))
+
+    # Move to next column if rows limit reached
+    if [ "$row_in_column" -ge "$rows" ]; then
+        col=$((col + 1))
+        row_in_column=0 # Reset row counter for the new column
+    fi
+
 done
 
 # Move cursor down after processing to avoid overwriting terminal input

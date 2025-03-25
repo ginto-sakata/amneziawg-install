@@ -43,7 +43,7 @@ SERVICE_IDS=$(jq -r 'keys[]' "$SERVICES_FILE")
 # Process each service file in the config directory
 echo "Processing service files..."
 columns=3      # Set number of columns
-rows=10        # Set number of rows per column
+rows=20        # Set number of rows per column
 counter=0      # Keeps track of the printed service index
 
 find "$IPLIST_CONFIG_DIR" -name "*.json" -type f | while read -r service_file; do

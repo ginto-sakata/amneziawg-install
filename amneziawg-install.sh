@@ -742,7 +742,7 @@ function manageMenu() {
     7)
         exit 0
         ;;
-    esac
+    esac # --- MISSING 'esac' WAS HERE ---
 
     echo ""
     read -n1 -r -p "Press any key to return to the menu..."

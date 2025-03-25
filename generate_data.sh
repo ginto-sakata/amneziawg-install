@@ -1,11 +1,16 @@
 #!/bin/bash
 
 # Directory containing the IP list configuration files
-CONFIG_DIR="${1:-./iplist/config}"
-OUTPUT_DIR="${2:-./static_website}"
-SERVICES_FILE="${3:-./static_website/services.json}"
 
-echo "Generating data from $CONFIG_DIR to $OUTPUT_DIR..."
+WORKING_DIR=$(pwd)
+IPLIST_DIR="$WORKING_DIR/iplist"
+CONFIG_DIR="$WORKING_DIR/iplist/config"
+WEBSITE_DIR="$WORKING_DIR/static_website"
+SERVICES_FILE="$WORKING_DIR/static_website/services.json"
+
+
+echo "Generating data from $CONFIG_DIR to $WEBSITE_DIR..."
+echo "services file: $SERVICES_FILE"
 
 # Check if required files exist
 if [ ! -f "$SERVICES_FILE" ]; then
@@ -24,7 +29,7 @@ else
 fi
 
 # Create initial JSON structure
-cat > "$OUTPUT_DIR/cidrs.json" << EOF
+cat > "$WEBSITE_DIR/cidrs.json" << EOF
 {
   "services": {
   }
@@ -62,10 +67,10 @@ find "$CONFIG_DIR" -name "*.json" -type f | while read -r service_file; do
     jq --arg id "$service_id" \
        --argjson cidrs "$cidrs" \
        '.services[$id] = {"cidrs": $cidrs}' \
-       "$OUTPUT_DIR/cidrs.json" > "$OUTPUT_DIR/cidrs.json.tmp"
-    mv "$OUTPUT_DIR/cidrs.json.tmp" "$OUTPUT_DIR/cidrs.json"
+       "$WEBSITE_DIR/cidrs.json" > "$WEBSITE_DIR/cidrs.json.tmp"
+    mv "$WEBSITE_DIR/cidrs.json.tmp" "$WEBSITE_DIR/cidrs.json"
 done
 
 
-echo "Data generation complete. File saved to: $OUTPUT_DIR"
+echo "Data generation complete. File saved to: $WEBSITE_DIR"
 echo "  - cidrs.json"

@@ -587,10 +587,11 @@ function installQuestions() {
 	fi
 
 	echo ""
-	echo -e "${GREEN}Configure traffic routing${NC}"
+	echo -e "${GREEN}Configure default traffic routing for new clients${NC}"
 	echo "1) Route all traffic (recommended)"
 	echo "2) Route specific websites only"
-	read -rp "Select an option [1-2]: " ROUTE_OPTION
+    echo "3) Route websites blocked in Russia"
+	read -rp "Select an option [1-3]: " ROUTE_OPTION
 	
 	if [[ ${ROUTE_OPTION} == "2" ]]; then
 		startWebServer
@@ -1328,7 +1329,7 @@ function uninstallWg() {
 
 function configureAllowedIPs() {
 	echo ""
-	echo -e "${GREEN}Configure traffic routing${NC}"
+	echo -e "${GREEN}Configure default traffic routing for new clients${NC}"
 	echo "1) Route all traffic (recommended)"
 	echo "2) Route specific websites only"
 	read -rp "Select an option [1-2]: " ROUTE_OPTION
@@ -1355,72 +1356,75 @@ function configureAllowedIPs() {
 function startWebServer() {
     # Create a temporary directory for the website and data
     TEMP_DIR=$(mktemp -d)
-    IPLIST_DIR="${TEMP_DIR}/iplist"
-    WEBSITE_DIR="${TEMP_DIR}/website"
-    
-    mkdir -p "${WEBSITE_DIR}"
+
+    # Clone AWG-INSTALL repo (website, scripts, configs)
+    cd "${TEMP_DIR}"
+    git clone https://github.com/ginto-sakata/amneziawg-install
+
+    AWG_INSTALL_TEMP_DIR="${TEMP_DIR}/amneziawg-install"
+    IPLIST_DIR="${AWG_INSTALL_TEMP_DIR}/iplist"
+    WEBSITE_DIR="${AWG_INSTALL_TEMP_DIR}/static_website"
     
     echo -e "${GREEN}Setting up website for service selection...${NC}"
     
     # Install necessary packages
     installWebServerDependencies
-    
+
     # Download iplist repository using git with sparse checkout
-    echo -e "${GREEN}Downloading IP lists data...${NC}"
+        echo -e "${GREEN}Downloading IP lists data...${NC}"
     
-    # Create home directory for AmneziaWG if it doesn't exist
-    HOME_DIR=$(getHomeDirForClient "${SUDO_USER:-root}")
-    AMNEZIAWG_DIR="${HOME_DIR}/amneziawg"
-    mkdir -p "${AMNEZIAWG_DIR}"
-    
-    # Clone the repository into amneziawg directory with sparse checkout
+    # Clone the iplist repository into temp directory with sparse checkout
     if command -v git &> /dev/null; then
         echo -e "${GREEN}Using git to clone the iplist repository...${NC}"
-        cd "${AMNEZIAWG_DIR}"
-        if [ ! -d "${AMNEZIAWG_DIR}/iplist" ]; then
+        cd "${AWG_INSTALL_TEMP_DIR}"
+        #TODO: Can we remove check for existing directory "iplist" as we are using the temp directory? 
+        if [ ! -d "${AWG_INSTALL_TEMP_DIR}/iplist" ]; then 
             git clone -n --depth=1 --filter=tree:0 https://github.com/rekryt/iplist
             cd iplist
             git sparse-checkout set --no-cone /config
             git checkout
         else
             echo -e "${GREEN}iplist directory already exists, updating...${NC}"
-            cd "${AMNEZIAWG_DIR}/iplist"
+            cd "${AWG_INSTALL_TEMP_DIR}/iplist"
             git pull
         fi
-        # Copy to temp dir for website use
-        cp -r "${AMNEZIAWG_DIR}/iplist" "${IPLIST_DIR}"
     else
         echo -e "${ORANGE}Git not found, downloading zip file instead...${NC}"
         if command -v curl &> /dev/null; then
-            curl -L "https://github.com/rekryt/iplist/archive/refs/heads/master.zip" -o "${TEMP_DIR}/iplist.zip"
+            curl -L "https://github.com/rekryt/iplist/archive/refs/heads/master.zip" -o "${AWG_INSTALL_TEMP_DIR}/iplist.zip"
         else
-            wget -q "https://github.com/rekryt/iplist/archive/refs/heads/master.zip" -O "${TEMP_DIR}/iplist.zip"
+            wget -q "https://github.com/rekryt/iplist/archive/refs/heads/master.zip" -O "${AWG_INSTALL_TEMP_DIR}/iplist.zip"
         fi
         
         echo -e "${GREEN}Extracting data...${NC}"
-        unzip -q "${TEMP_DIR}/iplist.zip" -d "${TEMP_DIR}"
-        mv "${TEMP_DIR}/iplist-master" "${IPLIST_DIR}"
+        unzip -q "${AWG_INSTALL_TEMP_DIR}/iplist.zip" -d "${AWG_INSTALL_TEMP_DIR}"
+        mv "${AWG_INSTALL_TEMP_DIR}/iplist-master" "${IPLIST_DIR}"
     fi
     
     # Make the script executable
-    chmod +x "${WEBSITE_DIR}/generate_data.sh"
+    chmod +x "${AWG_INSTALL_TEMP_DIR}/generate_data.sh"
     
     # Generate the cidrs.json file
     echo "Generating CIDR data..."
-    "${WEBSITE_DIR}/generate_data.sh" "${IPLIST_DIR}" "${WEBSITE_DIR}"
+    "${AWG_INSTALL_TEMP_DIR}/generate_data.sh" "${IPLIST_DIR}/config" "${WEBSITE_DIR}"
     
     # Create a simple web server using Python or PHP
     echo -e "${GREEN}Starting web server...${NC}"
     
-    # Try to determine the server's IP address
-    SERVER_IP=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v 127.0.0.1 | head -1)
+    # Try to get server's domain name, fallback to IP if not available
+    WEBSERVER_ADDRESS=$(hostname -f 2>/dev/null || hostname)
+    if [ -z "$WEBSERVER_ADDRESS" ] || [ "$WEBSERVER_ADDRESS" = "localhost" ]; then
+        WEBSERVER_ADDRESS=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v 127.0.0.1 | head -1)
+    fi
+    
+    WEBSERVER_ADDRESS=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v 127.0.0.1 | head -1)
     
     # Choose a port
     WEB_PORT=8080
     
     # Check if python3 is available
     if command -v python3 &> /dev/null; then
-        echo -e "${GREEN}Starting web server using Python 3 at http://${SERVER_IP}:${WEB_PORT}${NC}"
+        echo -e "${GREEN}Starting web server using Python 3 at http://${WEBSERVER_ADDRESS}:${WEB_PORT}${NC}"
         echo -e "${GREEN}Please open this URL in your browser.${NC}"
         echo -e "${GREEN}After selecting services, click 'Generate IP List' and copy the result.${NC}"
         echo -e "${ORANGE}Press Ctrl+C when done to continue with the installation.${NC}"
@@ -1430,7 +1434,7 @@ function startWebServer() {
         python3 -m http.server ${WEB_PORT}
     # Check if python2 is available
     elif command -v python &> /dev/null; then
-        echo -e "${GREEN}Starting web server using Python 2 at http://${SERVER_IP}:${WEB_PORT}${NC}"
+        echo -e "${GREEN}Starting web server using Python 2 at${NC} http://${WEBSERVER_ADDRESS}:${WEB_PORT}"
         echo -e "${GREEN}Please open this URL in your browser.${NC}"
         echo -e "${GREEN}After selecting services, click 'Generate IP List' and copy the result.${NC}"
         echo -e "${ORANGE}Press Ctrl+C when done to continue with the installation.${NC}"
@@ -1440,7 +1444,7 @@ function startWebServer() {
         python -m SimpleHTTPServer ${WEB_PORT}
     # Check if PHP is available
     elif command -v php &> /dev/null; then
-        echo -e "${GREEN}Starting web server using PHP at http://${SERVER_IP}:${WEB_PORT}${NC}"
+        echo -e "${GREEN}Starting web server using PHP at http://${WEBSERVER_ADDRESS}:${WEB_PORT}${NC}"
         echo -e "${GREEN}Please open this URL in your browser.${NC}"
         echo -e "${GREEN}After selecting services, click 'Generate IP List' and copy the result.${NC}"
         echo -e "${ORANGE}Press Ctrl+C when done to continue with the installation.${NC}"

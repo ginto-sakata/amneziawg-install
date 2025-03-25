@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Clone or update iplist repository
-# This script follows the same pattern used in amneziawg-install.sh
 
 WORKING_DIR=$(pwd)
 IPLIST_DIR="$WORKING_DIR/iplist"

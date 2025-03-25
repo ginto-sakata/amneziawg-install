@@ -142,19 +142,19 @@
             margin-right: 8px;
         }
         textarea#output {
-            height: 60px;
+            height: 92px;
             font-size: 12px;
             width: 50%;
             position: absolute;
             right: 10px;
-            top: 50px;
-            z-index: 2;
+            top: 20px;
+            z-index: 1;
         }
         .rkn-chan-container {
             position: absolute;
             right: 0;
             top: -180px;
-            z-index: 1;
+            z-index: 2;
         }
         .rkn-chan-container img {
             height: 400px;
@@ -191,9 +191,9 @@
             <div class="rkn-chan-container">
                 <img src="rknchan.png" alt="RKN Chan">
             </div>
-            <p class="text-gray-600 max-w-3xl">Select the websites and services you want to access through AmneziaWG or WireGuard VPN.<br><br>
+            <p class="text-gray-600 max-w-3xl">Select the websites and services you want to access through AmneziaWG or WireGuard VPN.<br>
             Your selections will generate a list of IP ranges to use in your client's configuration (AllowedIPs).</p>
-            <!-- Made textarea visible initially with default value -->
+            <div id="stats" class="text-sm text-gray-500 mb-2">0 IPs in 0 routes</div>
             <textarea id="output" class="w-full p-4 border border-gray-300 rounded-md shadow-inner font-mono text-sm bg-gray-50 focus:ring-blue-500 focus:border-blue-500" readonly>0.0.0.0/0</textarea>
         </header>
 
@@ -242,13 +242,52 @@
         // Store loaded service data
         const servicesData = {};
         let descriptions = {};
-        
+
+        // Function to update the output and statistics
+        function updateOutputAndStats() {
+            const selectedCIDRs = [];
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+
+            for (const checkbox of checkboxes) {
+                const category = checkbox.dataset.category;
+                const service = checkbox.dataset.service;
+                if (servicesData[category] && servicesData[category].services[service]) {
+                    selectedCIDRs.push(...servicesData[category].services[service].cidrs);
+                }
+            }
+
+            // Remove duplicate CIDRs
+            const uniqueCIDRs = [...new Set(selectedCIDRs)];
+
+            // Update output textarea
+            output.value = uniqueCIDRs.length > 0 ? uniqueCIDRs.join(',') : '0.0.0.0/0';
+
+            // Update statistics
+            const statsElement = document.getElementById('stats');
+            statsElement.textContent = `${uniqueCIDRs.length} IPs in ${selectedCIDRs.length} routes`;
+        }
+
+        // Add event listeners to all checkboxes to trigger the update
+        function setupCheckboxListeners() {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        this.closest('.service-item').classList.add('selected');
+                    } else {
+                        this.closest('.service-item').classList.remove('selected');
+                    }
+                    updateOutputAndStats();
+                });
+            });
+        }
+
         // Service combination mapping
         const serviceCombineMap = {
             'discord.com': ['discord.media', 'discord.gg'],
             'jetbrains.com': ['jetbrains.cdn', 'jetbrains.grazie.ai']
         };
-        
+
         // Reverse mapping for faster lookups
         const reverseCombineMap = {};
         for (const [primary, secondaries] of Object.entries(serviceCombineMap)) {
@@ -256,7 +295,7 @@
                 reverseCombineMap[secondary] = primary;
             }
         }
-        
+
         document.addEventListener('DOMContentLoaded', async function() {
             const loader = document.getElementById('loader');
             const categoriesContainer = document.getElementById('categories');
@@ -267,7 +306,7 @@
             const selectAllBtn = document.getElementById('select-all-btn');
             const deselectAllBtn = document.getElementById('deselect-all-btn');
             const darkModeToggle = document.querySelector('.dark-mode-toggle');
-            
+
             // Dark mode toggle
             darkModeToggle.addEventListener('click', function() {
                 document.documentElement.classList.toggle('dark');
@@ -280,12 +319,12 @@
                     icon.classList.add('fa-moon');
                 }
             });
-            
+
             // Function to load service data
             async function loadServiceData() {
                 loader.style.display = 'block';
                 categoriesContainer.innerHTML = '';
-                
+
                 try {
                     // Load all required data in parallel
                     const [categoriesResponse, servicesResponse, descriptionsResponse, cidrsResponse] = await Promise.all([
@@ -294,7 +333,7 @@
                         fetch('./descriptions.json'),
                         fetch('./cidrs.json')
                     ]);
-                    
+
                     if (!categoriesResponse.ok) {
                         throw new Error(`Failed to load categories: ${categoriesResponse.status}`);
                     }
@@ -307,12 +346,12 @@
                     if (!cidrsResponse.ok) {
                         throw new Error(`Failed to load CIDRs: ${cidrsResponse.status}`);
                     }
-                    
+
                     const categoriesData = await categoriesResponse.json();
                     const services = await servicesResponse.json();
                     descriptions = await descriptionsResponse.json();
                     const cidrs = await cidrsResponse.json();
-                    
+
                     // Combine all data
                     const result = {
                         categories: categoriesData.categories,
@@ -321,10 +360,10 @@
                         descriptions: descriptions,
                         cidrs: cidrs.services
                     };
-                    
+
                     // Process service combinations
                     combineCIDRs(result.cidrs);
-                    
+
                     return result;
                 } catch (error) {
                     console.error('Error loading data:', error);
@@ -339,13 +378,13 @@
                     loader.style.display = 'none';
                 }
             }
-            
+
             // Function to combine CIDRs for related services
             function combineCIDRs(cidrs) {
                 // Process each primary service
                 for (const [primary, secondaries] of Object.entries(serviceCombineMap)) {
                     if (!cidrs[primary]) continue;
-                    
+
                     // Combine CIDRs from secondaries into the primary service
                     for (const secondary of secondaries) {
                         if (cidrs[secondary]) {
@@ -354,7 +393,7 @@
                                 ...cidrs[primary].cidrs,
                                 ...cidrs[secondary].cidrs
                             ])];
-                            
+
                             // Mark secondary for removal from UI
                             cidrs[secondary].combined = true;
                             cidrs[secondary].primaryService = primary;
@@ -362,46 +401,46 @@
                     }
                 }
             }
-            
+
             // Function to format service ID into display name
             function formatDisplayName(serviceId, services) {
                 return services[serviceId] || serviceId;
             }
-            
+
             // Function to render all categories and services
             async function renderCategoriesAndServices() {
                 try {
                     const { categories, order, services, descriptions, cidrs } = await loadServiceData();
-                    
+
                     // Clear existing content
                     categoriesContainer.innerHTML = '';
-                    
+
                     // Use the order from categories.json
                     const sortedCategories = order;
-                    
+
                     // Render each category
                     for (const category of sortedCategories) {
                         const categoryData = categories[category];
                         const formattedCategoryName = categoryData.name;
-                        
+
                         // Create category container - updated with Tailwind styles
                         const categoryDiv = document.createElement('div');
                         categoryDiv.className = 'category-card bg-white rounded-lg shadow-sm overflow-hidden';
                         categoryDiv.dataset.category = formattedCategoryName;
-                        
+
                         // Create category header - updated with blue pastel gradient
                         const categoryHeader = document.createElement('div');
                         categoryHeader.className = 'bg-gradient-to-r from-blue-400 to-blue-300 p-3 text-white';
-                        
+
                         // Add category title and actions container
                         const categoryTitle = document.createElement('div');
                         categoryTitle.className = 'flex justify-between items-center';
-                        
+
                         // Add category icon
                         const icon = document.createElement('img');
                         icon.className = 'category-icon';
                         icon.alt = '';
-                        
+
                         // Set icon based on category
                         switch(formattedCategoryName.toLowerCase()) {
                             case 'video streaming':
@@ -418,7 +457,7 @@
                                 break;
                             case 'media':
                                 // Random between POGGERS and OMEGALUL
-                                icon.src = Math.random() < 0.5 ? 
+                                icon.src = Math.random() < 0.5 ?
                                     'https://cdn.frankerfacez.com/emoticon/214129/2' : // POGGERS
                                     'https://cdn.frankerfacez.com/emoticon/128054/2'; // OMEGALUL
                                 break;
@@ -460,36 +499,36 @@
                             default:
                                 icon.src = 'https://cdn.frankerfacez.com/emoticon/231552/2'; // PepeHands as fallback
                         }
-                        
+
                         // Add error handling for emote loading
                         icon.onerror = function() {
                             // Fallback to PepeHands if emote fails to load
                             this.src = 'https://cdn.frankerfacez.com/emoticon/231552/2';
                         };
-                        
+
                         const titleContainer = document.createElement('div');
                         titleContainer.className = 'flex items-center';
-                        
+
                         const title = document.createElement('h3');
                         title.className = 'text-base font-semibold';
                         title.textContent = formattedCategoryName;
-                        
+
                         titleContainer.appendChild(icon);
                         titleContainer.appendChild(title);
-                        
+
                         const headerActions = document.createElement('div');
                         headerActions.className = 'flex space-x-1';
-                        
+
                         // Create select all button - improved visibility
                         const selectAllBtn = document.createElement('button');
                         selectAllBtn.className = 'text-xs px-2 py-1 bg-blue-500 text-white rounded transition focus:outline-none w-16';
                         selectAllBtn.textContent = 'All';
-                        
+
                         // Create deselect all button - improved visibility with white background
                         const deselectAllBtn = document.createElement('button');
                         deselectAllBtn.className = 'text-xs px-2 py-1 bg-white text-gray-700 rounded transition focus:outline-none w-16';
                         deselectAllBtn.textContent = 'None';
-                        
+
                         // Add click handlers
                         selectAllBtn.addEventListener('click', function() {
                             const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
@@ -497,31 +536,33 @@
                                 cb.checked = true;
                                 cb.closest('.service-item').classList.add('selected');
                             });
+                            updateOutputAndStats();
                         });
-                        
+
                         deselectAllBtn.addEventListener('click', function() {
                             const checkboxes = categoryDiv.querySelectorAll('input[type="checkbox"]');
                             checkboxes.forEach(cb => {
                                 cb.checked = false;
                                 cb.closest('.service-item').classList.remove('selected');
                             });
+                            updateOutputAndStats();
                         });
-                        
+
                         headerActions.appendChild(selectAllBtn);
                         headerActions.appendChild(deselectAllBtn);
-                        
+
                         categoryTitle.appendChild(titleContainer);
                         categoryTitle.appendChild(headerActions);
                         categoryHeader.appendChild(categoryTitle);
                         categoryDiv.appendChild(categoryHeader);
-                        
+
                         // Create services list container with scrolling
                         const servicesContainer = document.createElement('div');
                         servicesContainer.className = 'services-container p-2';
-                        
+
                         // Save category services in our data structure
                         servicesData[formattedCategoryName] = { services: {} };
-                        
+
                         // Get and sort services
                         let serviceEntries = categoryData.services
                             .filter(serviceId => {
@@ -532,25 +573,25 @@
                                 return true;
                             })
                             .map(serviceId => [serviceId, cidrs[serviceId]]);
-                        
+
                         // Sort services alphabetically by display name
                         serviceEntries.sort((a, b) => {
                             const nameA = services[a[0]] || a[0];
                             const nameB = services[b[0]] || b[0];
                             return nameA.localeCompare(nameB);
                         });
-                        
+
                         // Process services in the category
                         for (const [serviceId, serviceData] of serviceEntries) {
                             // Create service container - updated with Tailwind styles
                             const serviceItem = document.createElement('div');
                             serviceItem.className = 'service-item flex items-center p-2 rounded-md cursor-pointer relative mb-1';
                             serviceItem.dataset.serviceName = serviceId.toLowerCase();
-                            
+
                             // Create service div
                             const serviceDiv = document.createElement('div');
                             serviceDiv.className = 'service flex items-center w-full';
-                            
+
                             // Create checkbox
                             const checkbox = document.createElement('input');
                             checkbox.type = 'checkbox';
@@ -563,8 +604,9 @@
                                 } else {
                                     serviceItem.classList.remove('selected');
                                 }
+                                updateOutputAndStats();
                             });
-                            
+
                             // Create favicon
                             const favicon = document.createElement('img');
                             favicon.className = 'h-5 w-5 mr-3 flex-shrink-0';
@@ -577,15 +619,15 @@
                                 this.style.width = '20px';
                                 this.style.height = '20px';
                             };
-                            
+
                             // Create service name with link icon
                             const nameContainer = document.createElement('div');
                             nameContainer.className = 'flex items-center flex-grow';
-                            
+
                             const name = document.createElement('span');
                             name.className = 'service-name text-sm font-medium text-gray-700';
                             name.textContent = formatDisplayName(serviceId, services);
-                            
+
                             const linkIcon = document.createElement('a');
                             linkIcon.href = `https://${serviceId}`;
                             linkIcon.target = '_blank';
@@ -596,35 +638,35 @@
                             linkIcon.addEventListener('click', function(e) {
                                 e.stopPropagation(); // Prevent checkbox toggle when clicking link
                             });
-                            
+
                             nameContainer.appendChild(name);
                             nameContainer.appendChild(linkIcon);
-                            
+
                             // Create tooltip with description
                             const tooltip = document.createElement('div');
                             tooltip.className = 'service-tooltip';
                             tooltip.textContent = descriptions[serviceId] || 'Access website and services';
-                            
+
                             // Add secondary services info to tooltip if this is a combined service
                             if (serviceCombineMap[serviceId]) {
                                 const combinedNames = serviceCombineMap[serviceId]
                                     .filter(id => cidrs[id])
                                     .map(id => id);
-                                
+
                                 if (combinedNames.length > 0) {
                                     tooltip.textContent += ` (Includes: ${combinedNames.join(', ')})`;
                                 }
                             }
-                            
+
                             // Add service elements to the service div
                             serviceDiv.appendChild(checkbox);
                             serviceDiv.appendChild(favicon);
                             serviceDiv.appendChild(nameContainer);
-                            
+
                             // Add tooltip to service item instead of service div to fix positioning
                             serviceItem.appendChild(tooltip);
                             serviceItem.appendChild(serviceDiv);
-                            
+
                             // Make div clickable for checkbox
                             serviceDiv.addEventListener('click', function(e) {
                                 if (e.target !== checkbox && !e.target.closest('a')) {
@@ -634,19 +676,20 @@
                                     } else {
                                         serviceItem.classList.remove('selected');
                                     }
+                                    updateOutputAndStats();
                                 }
                             });
-                            
+
                             // Add service to list
                             servicesContainer.appendChild(serviceItem);
-                            
+
                             // Save service data
                             servicesData[formattedCategoryName].services[serviceId] = serviceData;
                         }
-                        
+
                         // Add services list to category
                         categoryDiv.appendChild(servicesContainer);
-                        
+
                         // Add category to container
                         categoriesContainer.appendChild(categoryDiv);
                     }
@@ -658,21 +701,24 @@
                             <h3 class="text-lg font-medium text-gray-900 mb-1">Error rendering categories</h3>
                             <p class="text-gray-500">${error.message}</p>
                         </div>`;
+                } finally {
+                    setupCheckboxListeners();
+                    updateOutputAndStats(); // Initialize with 0 counts
                 }
             }
-            
+
             // Setup search functionality
             searchInput.addEventListener('input', function() {
                 const searchTerm = this.value.toLowerCase().trim();
                 const categories = document.querySelectorAll('[data-category]');
-                
+
                 if (searchTerm === '') {
                     // Reset all visibility when search is cleared
                     categories.forEach(category => {
                         category.style.display = 'flex';
                         category.querySelectorAll('.service-item').forEach(service => {
                             service.style.display = 'flex';
-                            
+
                             // Remove any existing highlights
                             const serviceName = service.querySelector('.service-name');
                             serviceName.innerHTML = serviceName.textContent;
@@ -680,34 +726,34 @@
                     });
                     return;
                 }
-                
+
                 categories.forEach(category => {
                     const services = category.querySelectorAll('.service-item');
                     let hasVisibleServices = false;
-                    
+
                     services.forEach(service => {
                         const serviceNameElem = service.querySelector('.service-name');
                         const serviceName = serviceNameElem ? (serviceNameElem.dataset.serviceName || serviceNameElem.textContent.toLowerCase()) : '';
-                        
+
                         if (serviceName.includes(searchTerm)) {
                             service.style.display = 'flex';
                             hasVisibleServices = true;
-                            
+
                             // Highlight the matching text
                             const regex = new RegExp(`(${searchTerm})`, 'gi');
                             serviceNameElem.innerHTML = serviceNameElem.textContent.replace(
-                                regex, 
+                                regex,
                                 '<span class="search-highlight">$1</span>'
                             );
                         } else {
                             service.style.display = 'none';
                         }
                     });
-                    
+
                     category.style.display = hasVisibleServices ? 'flex' : 'none';
                 });
             });
-            
+
             // Select all button functionality
             selectAllBtn.addEventListener('click', function() {
                 const checkboxes = document.querySelectorAll('input[type="checkbox"]');
@@ -715,8 +761,9 @@
                     cb.checked = true;
                     cb.closest('.service-item').classList.add('selected');
                 });
+                updateOutputAndStats();
             });
-            
+
             // Deselect all button functionality
             deselectAllBtn.addEventListener('click', function() {
                 const checkboxes = document.querySelectorAll('input[type="checkbox"]');
@@ -724,37 +771,38 @@
                     cb.checked = false;
                     cb.closest('.service-item').classList.remove('selected');
                 });
+                updateOutputAndStats();
             });
-            
+
             // Setup generate and copy button
             generateAndCopyBtn.addEventListener('click', function() {
                 const selectedCIDRs = [];
                 const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
-                
+
                 if (checkboxes.length === 0) {
                     alert('Please select at least one service');
                     return;
                 }
-                
+
                 for (const checkbox of checkboxes) {
                     const category = checkbox.dataset.category;
                     const service = checkbox.dataset.service;
-                    
+
                     if (servicesData[category] && servicesData[category].services[service]) {
                         selectedCIDRs.push(...servicesData[category].services[service].cidrs);
                     }
                 }
-                
+
                 if (selectedCIDRs.length > 0) {
                     // Remove duplicate CIDRs
                     const uniqueCIDRs = [...new Set(selectedCIDRs)];
-                    
+
                     // Join with commas
                     output.value = uniqueCIDRs.join(',');
-                    
+
                     // Copy to clipboard
                     output.select();
-                    
+
                     try {
                         const successful = document.execCommand('copy');
                         if (successful) {
@@ -788,7 +836,7 @@
                     alert('No IP ranges found for selected services');
                 }
             });
-            
+
             // Load and render data when page loads
             renderCategoriesAndServices();
         });

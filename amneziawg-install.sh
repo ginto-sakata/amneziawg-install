@@ -82,7 +82,7 @@ function setupDebSrc() {
     if [[ ${OS} == "ubuntu" ]]; then
         if ! grep -q "^Types:.*deb-src" /etc/apt/sources.list.d/ubuntu.sources; then
             echo "deb-src repositories are not enabled. They are required for AmneziaWG installation."
-            read -rp "Would you like to enable deb-src repositories? [y/n]: " -i "y" ENABLE_SRC
+            read -rp "Would you like to enable deb-src repositories? [y/n]: " -e -i "y" ENABLE_SRC
             if [[ $ENABLE_SRC == 'y' ]]; then
                 sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
                 apt-get update
@@ -511,7 +511,7 @@ function installQuestions() {
 	# Ask about IPv6 support first
 	echo -e "${GREEN}Do you want to enable IPv6 support?${NC}"
 	while true; do
-		read -rp "Enable IPv6? [y/n]: " -i "y" ENABLE_IPV6
+		read -rp "Enable IPv6? [y/n]: " -e -i "y" ENABLE_IPV6
 		if [[ ${ENABLE_IPV6} =~ ^[yn]$ ]]; then
 			break
 		fi
@@ -524,7 +524,7 @@ function installQuestions() {
 		echo -e "${GREEN}Server domain/hostname detected: ${SERVER_HOSTNAME}${NC}"
 		echo "This can be used as the endpoint URL for clients to connect."
 		while true; do
-			read -rp "Use domain/hostname instead of IP? [y/n]: " -i "y" USE_HOSTNAME
+			read -rp "Use domain/hostname instead of IP? [y/n]: " -e -i "y" USE_HOSTNAME
 			if [[ ${USE_HOSTNAME} =~ ^[yn]$ ]]; then
 				break
 			fi
@@ -588,36 +588,49 @@ function installQuestions() {
 		read -rp "What port do you want AmneziaWG to listen to? [1-65535]: " -e -i "${RANDOM_PORT}" SERVER_PORT
 	done
 
-	# Configure default traffic routing for new clients - using function
-	echo ""
-	echo -e "${GREEN}Configure default traffic routing for new clients${NC}"
-	echo "1) Route all traffic (recommended)"
-	echo "2) Route specific websites only"
+    # Configure default traffic routing for new clients - using function
+    echo ""
+    echo -e "${GREEN}Configure default traffic routing for new clients${NC}"  # Assuming GREEN and NC are defined
+    echo "1) Route all traffic (recommended)"
+    echo "2) Route specific websites only"
     echo "3) Route websites blocked in Russia"
-	read -rp "Select an option [1-3]: " ROUTE_OPTION
 
-	if [[ ${ROUTE_OPTION} == "2" ]]; then
-		startWebServer
-		echo "Please paste the IP list generated from the website:"
-		read -rp "IP List: " ALLOWED_IPS
+    # --- Input Validation Loop ---
+    while true; do
+    read -rp "Select an option [1-3]: " -e -i "1" ROUTE_OPTION
 
-		# Validate input format
-		if [[ ! ${ALLOWED_IPS} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}(,([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2})*$ ]]; then
-			echo "Invalid format. Using default (all traffic)"
-			ALLOWED_IPS="0.0.0.0/0"
-		fi
-	elif [[ ${ROUTE_OPTION} == "3" ]]; then
-		# Use pre-defined list for "websites blocked in Russia" (you may need to define this list)
-		# For now, I'm just setting ALLOWED_IPS to a placeholder - you'll need to replace this
-		ALLOWED_IPS="YOUR_RUSSIAN_BLOCKED_WEBSITES_IP_LIST_HERE"
-		echo -e "${ORANGE}Routing traffic to websites blocked in Russia.${NC}"
-		echo -e "${ORANGE}You will need to define the actual IP list for Russian blocked websites.${NC}"
-		# --- IMPORTANT: You'll need to replace "YOUR_RUSSIAN_BLOCKED_WEBSITES_IP_LIST_HERE"
-		# --- with the actual IP list you want to use for this option.
-		# --- You could load this list from a file or define it as a variable in the script.
-	else
-		ALLOWED_IPS="0.0.0.0/0"
-	fi
+    # Check if the input is valid (1, 2, or 3)
+    if [[ "$ROUTE_OPTION" =~ ^[1-3]$ ]]; then
+        break  # Exit the loop if input is valid
+    else
+        echo "Invalid input.  Please enter 1, 2, or 3."
+        # No need to clear ROUTE_OPTION, -i will handle re-entry
+    fi
+    done
+    # --- End of Input Validation Loop ---
+
+    if [[ ${ROUTE_OPTION} == "2" ]]; then
+        startWebServer  # Assuming startWebServer is defined elsewhere
+        echo "Please paste the IP list generated from the website:"
+        read -rp "IP List: " ALLOWED_IPS
+
+        # Validate input format (improved regex)
+        if [[ ! ${ALLOWED_IPS} =~ ^(([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2})(,([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2})*$ ]]; then
+            echo "Invalid format. Using default (all traffic)"
+            ALLOWED_IPS="0.0.0.0/0"
+        fi
+    elif [[ ${ROUTE_OPTION} == "3" ]]; then
+        # Use pre-defined list for "websites blocked in Russia" (you may need to define this list)
+        # For now, I'm just setting ALLOWED_IPS to a placeholder - you'll need to replace this
+        ALLOWED_IPS="YOUR_RUSSIAN_BLOCKED_WEBSITES_IP_LIST_HERE"
+        echo -e "${ORANGE}Routing traffic to websites blocked in Russia.${NC}"  # Assuming ORANGE and NC are defined
+        echo -e "${ORANGE}You will need to define the actual IP list for Russian blocked websites.${NC}"
+        # --- IMPORTANT: You'll need to replace "YOUR_RUSSIAN_BLOCKED_WEBSITES_IP_LIST_HERE"
+        # --- with the actual IP list you want to use for this option.
+        # --- You could load this list from a file or define it as a variable in the script.
+    else
+        ALLOWED_IPS="0.0.0.0/0"  # Default: Route all traffic (option 1 or invalid input)
+    fi
 
 	if [[ ${ENABLE_IPV6} == "y" ]]; then
 		ALLOWED_IPS="${ALLOWED_IPS},::/0"
@@ -1419,133 +1432,6 @@ function installWebServerDependencies() {
     fi
 }
 
-function installAmneziaWG() {
-    # Start with welcome screen
-    installQuestions
-
-    echo ""
-    echo "╔═══════════════════════════════════════════════╗"
-    echo "║        AmneziaWG Installation Process         ║"
-    echo "╚═══════════════════════════════════════════════╝"
-    echo ""
-
-    # Create necessary directories
-    mkdir -p /etc/amnezia/amneziawg
-    chmod 700 /etc/amnezia/amneziawg
-
-    # Install dependencies
-    echo -e "${GREEN}Installing required dependencies...${NC}"
-    if [[ ${OS} == "ubuntu" || ${OS} == "debian" ]]; then
-        setupDebSrc
-        apt-get update
-        apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release software-properties-common
-
-        # Add Amnezia repositories
-        echo -e "${GREEN}Adding AmneziaWG repository...${NC}"
-        curl -fsSL https://dl.amnezia.org/key.pub | gpg --dearmor -o /usr/share/keyrings/amnezia-archive-keyring.gpg
-        echo "deb [signed-by=/usr/share/keyrings/amnezia-archive-keyring.gpg] https://dl.amnezia.org/apt stable main" > /etc/apt/sources.list.d/amnezia.list
-
-        # Update and install AmneziaWG
-        apt-get update
-        apt-get install -y amneziawg
-    elif [[ ${OS} == "rhel" ]]; then
-        installAmneziaWGRHEL
-    fi
-
-    # Generate server key pair
-    echo -e "${GREEN}Generating AmneziaWG server keys...${NC}"
-    SERVER_PRIV_KEY=$(awg genkey)
-    SERVER_PUB_KEY=$(echo "${SERVER_PRIV_KEY}" | awg pubkey)
-
-    # Run setupServer to configure the server
-    setupServer
-}
-
-function manageMenu() {
-    echo ""
-    echo "╔═══════════════════════════════════════════════╗"
-    echo "║           AmneziaWG Management Panel          ║"
-    echo "╚═══════════════════════════════════════════════╝"
-    echo ""
-    echo "Welcome to AmneziaWG management menu"
-    echo ""
-    echo "What do you want to do?"
-    echo "   1) Add a new client"
-    echo "   2) List existing clients"
-    echo "   3) Revoke a client"
-    echo "   4) Configure obfuscation settings"
-    echo "   5) Configure traffic routing"
-    echo "   6) Uninstall AmneziaWG"
-    echo "   7) Exit"
-    echo ""
-
-    until [[ ${MENU_OPTION} =~ ^[1-7]$ ]]; do
-        read -rp "Select an option [1-7]: " MENU_OPTION
-    done
-
-    case "${MENU_OPTION}" in
-    1)
-        newClient
-        ;;
-    2)
-        listClients
-        ;;
-    3)
-        revokeClient
-        ;;
-    4)
-        configureObfuscationSettings
-        ;;
-    5)
-        configureAllowedIPs
-        # Update server config
-        updateServerConfig
-
-        # Ask if regenerate all client configs
-        read -rp "Regenerate all client configurations with these settings? [y/n]: " -i "y" REGEN_CLIENTS
-        echo ""
-
-        if [[ ${REGEN_CLIENTS} == 'y' ]]; then
-            regenerateAllClientConfigs
-        fi
-        ;;
-    6)
-        uninstallWg
-        ;;
-    7)
-        exit 0
-        ;;
-    esac
-
-    echo ""
-    read -n1 -r -p "Press any key to return to the menu..."
-    echo ""
-    manageMenu
-}
-
-# Check for root, virt, OS...
-initialCheck
-
-# Check if AmneziaWG is already installed and load params
-if [[ -e /etc/amnezia/amneziawg/params ]]; then
-	source /etc/amnezia/amneziawg/params
-	manageMenu
-else
-	installAmneziaWG
-fi
-
-# Add error handling function
-handle_error() {
-    local exit_code=$?
-    echo "Error occurred in script at line: ${BASH_LINENO[0]}"
-    # Cleanup if needed
-    exit $exit_code
-}
-trap 'handle_error' ERR
-
-# Fix for potential syntax errors
-set +e  # Continue execution even if there's an error
-
 function setupServer() {
     echo -e "${GREEN}Setting up AmneziaWG server...${NC}"
 
@@ -1673,3 +1559,125 @@ PostDown = ip6tables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE" >
     echo -e "${GREEN}AmneziaWG installation completed!${NC}"
     echo -e "${GREEN}You can add more clients using:${NC} $0"
 }
+
+function installAmneziaWG() {
+    # Start with welcome screen
+    installQuestions
+
+    echo ""
+    echo "╔═══════════════════════════════════════════════╗"
+    echo "║        AmneziaWG Installation Process         ║"
+    echo "╚═══════════════════════════════════════════════╝"
+    echo ""
+
+    # Create necessary directories
+    mkdir -p /etc/amnezia/amneziawg
+    chmod 700 /etc/amnezia/amneziawg
+
+    # Install dependencies
+    echo -e "${GREEN}Installing required dependencies...${NC}"
+    if [[ ${OS} == "ubuntu" || ${OS} == "debian" ]]; then
+        setupDebSrc
+        apt-get update
+        apt-get install -y software-properties-common python3-launchpadlib gnupg2 linux-headers-$(uname -r)
+
+        add-apt-repository ppa:amnezia/ppa
+        apt-get install -y amneziawg
+        
+    elif [[ ${OS} == "rhel" ]]; then
+        installAmneziaWGRHEL
+    fi
+
+    # Generate server key pair
+    echo -e "${GREEN}Generating AmneziaWG server keys...${NC}"
+    SERVER_PRIV_KEY=$(awg genkey)
+    SERVER_PUB_KEY=$(echo "${SERVER_PRIV_KEY}" | awg pubkey)
+
+    # Run setupServer to configure the server
+    setupServer
+}
+
+function manageMenu() {
+    echo ""
+    echo "╔═══════════════════════════════════════════════╗"
+    echo "║           AmneziaWG Management Panel          ║"
+    echo "╚═══════════════════════════════════════════════╝"
+    echo ""
+    echo "Welcome to AmneziaWG management menu"
+    echo ""
+    echo "What do you want to do?"
+    echo "   1) Add a new client"
+    echo "   2) List existing clients"
+    echo "   3) Revoke a client"
+    echo "   4) Configure obfuscation settings"
+    echo "   5) Configure traffic routing"
+    echo "   6) Uninstall AmneziaWG"
+    echo "   7) Exit"
+    echo ""
+
+    until [[ ${MENU_OPTION} =~ ^[1-7]$ ]]; do
+        read -rp "Select an option [1-7]: " MENU_OPTION
+    done
+
+    case "${MENU_OPTION}" in
+    1)
+        newClient
+        ;;
+    2)
+        listClients
+        ;;
+    3)
+        revokeClient
+        ;;
+    4)
+        configureObfuscationSettings
+        ;;
+    5)
+        configureAllowedIPs
+        # Update server config
+        updateServerConfig
+
+        # Ask if regenerate all client configs
+        read -rp "Regenerate all client configurations with these settings? [y/n]: " -i "y" REGEN_CLIENTS
+        echo ""
+
+        if [[ ${REGEN_CLIENTS} == 'y' ]]; then
+            regenerateAllClientConfigs
+        fi
+        ;;
+    6)
+        uninstallWg
+        ;;
+    7)
+        exit 0
+        ;;
+    esac
+
+    echo ""
+    read -n1 -r -p "Press any key to return to the menu..."
+    echo ""
+    manageMenu
+}
+
+# Check for root, virt, OS...
+initialCheck
+
+# Check if AmneziaWG is already installed and load params
+if [[ -e /etc/amnezia/amneziawg/params ]]; then
+	source /etc/amnezia/amneziawg/params
+	manageMenu
+else
+	installAmneziaWG
+fi
+
+# Add error handling function
+handle_error() {
+    local exit_code=$?
+    echo "Error occurred in script at line: ${BASH_LINENO[0]}"
+    # Cleanup if needed
+    exit $exit_code
+}
+trap 'handle_error' ERR
+
+# Fix for potential syntax errors
+set +e  # Continue execution even if there's an error

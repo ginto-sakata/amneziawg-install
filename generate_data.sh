@@ -43,16 +43,15 @@ SERVICE_IDS=$(jq -r 'keys[]' "$SERVICES_FILE")
 # Process each service file in the config directory
 echo "Processing service files..."
 find "$IPLIST_CONFIG_DIR" -name "*.json" -type f | while read -r service_file; do
-    # Get service ID from filename
     service_id=$(basename "$service_file" .json)
     
-    # Skip if service is not in our whitelist
     if ! echo "$SERVICE_IDS" | grep -q "^$service_id$"; then
-        echo "Skipping unknown service: $service_id"
         continue
     fi
     
-    echo "Processing service: $service_id"
+    echo "$service_id"
+done | paste -d ' ' - - - - - - -   # Adjust the number of `-` for columns (15 here)
+
     
     # Extract CIDRs from service file
     cidrs=$(jq -c '.cidr4 // []' "$service_file")

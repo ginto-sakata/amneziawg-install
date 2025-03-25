@@ -3,7 +3,7 @@
 # Directory containing the IP list configuration files
 CONFIG_DIR="${1:-./iplist/config}"
 OUTPUT_DIR="${2:-./static_website}"
-SERVICES_FILE="${3:-./services.json}"
+SERVICES_FILE="${3:-./static_website/services.json}"
 
 echo "Generating data from $CONFIG_DIR to $OUTPUT_DIR..."
 
@@ -74,14 +74,6 @@ find "$CONFIG_DIR" -name "*.json" -type f | while read -r service_file; do
     mv "$OUTPUT_DIR/cidrs.json.tmp" "$OUTPUT_DIR/cidrs.json"
 done
 
-# Copy required JSON files to static_website directory
-echo "Copying required JSON files to $OUTPUT_DIR..."
-cp services.json "$OUTPUT_DIR/"
-cp categories.json "$OUTPUT_DIR/"
-cp descriptions.json "$OUTPUT_DIR/"
 
-echo "Data generation complete. Files saved to: $OUTPUT_DIR"
+echo "Data generation complete. File saved to: $OUTPUT_DIR"
 echo "  - cidrs.json"
-echo "  - services.json"
-echo "  - categories.json"
-echo "  - descriptions.json"

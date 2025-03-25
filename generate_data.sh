@@ -42,15 +42,29 @@ SERVICE_IDS=$(jq -r 'keys[]' "$SERVICES_FILE")
 
 # Process each service file in the config directory
 echo "Processing service files..."
+columns=3      # Set number of columns
+rows=10        # Set number of rows per column
+counter=0      # Keeps track of the printed service index
+
 find "$IPLIST_CONFIG_DIR" -name "*.json" -type f | while read -r service_file; do
     service_id=$(basename "$service_file" .json)
     
     if ! echo "$SERVICE_IDS" | grep -q "^$service_id$"; then
         continue
     fi
-    
-    echo "$service_id"
-done | paste -d ' ' - - - - - - -   # Adjust the number of `-` for columns (15 here)
+
+    row=$((counter % rows))
+    col=$((counter / rows))
+
+    # Move cursor to correct position
+    printf "\033[%d;%dH%-25s" $((row + 2)) $((col * 26 + 1)) "$service_id"
+
+    counter=$((counter + 1))
+done
+
+# Move cursor down after processing to avoid overwriting terminal input
+echo -e "\n\n"
+
 
     
     # Extract CIDRs from service file

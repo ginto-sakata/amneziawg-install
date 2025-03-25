@@ -585,29 +585,8 @@ function installQuestions() {
 	# Generate random number within private ports range
 	RANDOM_PORT=$(shuf -i49152-65535 -n1)
 	until [[ ${SERVER_PORT} =~ ^[0-9]+$ ]] && [ "${SERVER_PORT}" -ge 1 ] && [ "${SERVER_PORT}" -le 65535 ]; do
-		read -rp "Server AmneziaWG port [1-65535]: " -e -i "${RANDOM_PORT}" SERVER_PORT
+		read -rp "What port do you want AmneziaWG to listen to? [1-65535]: " -e -i "${RANDOM_PORT}" SERVER_PORT
 	done
-
-	# Cloudflare DNS by default
-	until [[ ${CLIENT_DNS_1} =~ ^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$ ]]; do
-		read -rp "First DNS resolver to use for the clients (IPv4): " -e -i 1.1.1.1 CLIENT_DNS_1
-	done
-	until [[ ${CLIENT_DNS_2} =~ ^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$ ]]; do
-		read -rp "Second DNS resolver to use for the clients (IPv4): " -e -i 1.0.0.1 CLIENT_DNS_2
-		if [[ ${CLIENT_DNS_2} == "" ]]; then
-			CLIENT_DNS_2="${CLIENT_DNS_1}"
-		fi
-	done
-
-	# Cloudflare IPv6 DNS
-	if [[ ${ENABLE_IPV6} == 'y' ]]; then
-		read -rp "First DNS resolver to use for the clients (IPv6): " -e -i 2606:4700:4700::1111 CLIENT_DNS_IPV6_1
-		read -rp "Second DNS resolver to use for the clients (IPv6): " -e -i 2606:4700:4700::1001 CLIENT_DNS_IPV6_2
-	else
-		CLIENT_DNS_IPV6_1=""
-		CLIENT_DNS_IPV6_2=""
-	fi
-
 
 	# Configure default traffic routing for new clients - using function
 	echo ""
@@ -644,28 +623,8 @@ function installQuestions() {
 		ALLOWED_IPS="${ALLOWED_IPS},::/0"
 	fi
 
-	echo ""
-	echo -e "${GREEN}Okay, that was all I needed. We are ready to setup your AmneziaWG server now.${NC}"
-	echo -e "${GREEN}You will be able to generate a client at the end of the installation.${NC}"
-	read -n1 -r -p "Press any key to start the installation..."
-	echo ""
-
-	# Set default AmneziaWG advanced settings instead of asking
-	setDefaultAmneziaSettings
-
-	echo ""
-	# Choose server's port
-	echo -e "${GREEN}What port do you want AmneziaWG to listen to?${NC}"
-	read -rp "Port: " -e -i "51820" SERVER_PORT
-	echo ""
-
-	# Ask about traffic routing - this is the second time asking - remove this redundant block
-	# echo -e "${GREEN}By default, AmneziaWG will route all traffic through the VPN.${NC}"
-	# echo "You can specify different IP ranges if you want to exclude some traffic from the VPN."
-	# read -rp "Traffic to route through VPN (default is all traffic): " -e -i "0.0.0.0/0, ::/0" ALLOWED_IPS
-	# echo ""
-
-	# Configure DNS for client devices
+	# Configure default DNS for client devices
+    echo ""
 	echo -e "${GREEN}Select DNS servers for clients:${NC}"
 	echo " 1) Google (Recommended)"
 	echo " 2) Cloudflare"
@@ -703,9 +662,16 @@ function installQuestions() {
 		CLIENT_DNS_2="8.8.4.4"
 		CLIENT_DNS_IPV6_1="2001:4860:4860::8888"
 		CLIENT_DNS_IPV6_2="2001:4860:4860::8844"
-		echo "net.ipv6.conf.all.forwarding = 1" >> /etc/sysctl.d/awg.conf
 	fi
-	sysctl --system
+
+    # Set default AmneziaWG advanced settings instead of asking
+	setDefaultAmneziaSettings
+    
+	echo ""
+	echo -e "${GREEN}Okay, that was all I needed. We are ready to setup your AmneziaWG server now.${NC}"
+	echo -e "${GREEN}You will be able to generate a client at the end of the installation.${NC}"
+	read -n1 -r -p "Press any key to start the installation..."
+	echo ""
 }
 
 function installAmneziaWGRHEL() {

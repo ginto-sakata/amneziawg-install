@@ -37,19 +37,31 @@ EOF
 echo "Loading service categories from directories..."
 SERVICE_CATEGORIES_ARRAY=($(find "$IPLIST_CONFIG_DIR" -maxdepth 1 -type d -not -path "$IPLIST_CONFIG_DIR" -printf "%f\n")) # Get folder names
 
-# --- Layout Variables (Extreme Compactness & Debugging) ---
-rows=10        # Further reduced rows for very tall, narrow columns
-cols_per_row=4 # Number of columns per output row
-col_separator=" | " # Very distinct column separator (pipe with spaces)
-col_width=5      # Setting col_width to a very small value (though not directly used now)
+# --- Layout Variables (Extreme Compactness & Truncation) ---
+rows=10        # Rows per column
+cols_per_row=4 # Columns per output row
+col_separator=" | " # Column separator
+max_name_length=15 # Maximum length for category/service names (adjust as needed)
 
 num_categories=${#SERVICE_CATEGORIES_ARRAY[@]}
 num_output_rows=$(( (num_categories + cols_per_row - 1) / cols_per_row )) # Number of output rows needed
 
 output_row_index=0 # Counter for output rows
 
-# Process service categories and services - EXTREME COMPACT OUTPUT
-echo "Processing service categories - EXTREME COMPACT OUTPUT..."
+# --- Function to truncate strings ---
+truncate_string() {
+  local string="$1"
+  local max_length="$2"
+  if [ ${#string} -gt "$max_length" ]; then
+    printf "%.*s..." "$max_length" "$string"
+  else
+    echo "$string"
+  fi
+}
+
+
+# Process service categories and services - EXTREME COMPACT OUTPUT with TRUNCATION
+echo "Processing service categories - EXTREME COMPACT OUTPUT (with TRUNCATION)..."
 
 # Loop through output rows (sets of columns)
 for output_row in $(seq 1 $((num_output_rows))); do
@@ -60,7 +72,8 @@ for output_row in $(seq 1 $((num_output_rows))); do
         category_index_header=$((output_row_index * cols_per_row + col_index_header))
         if [ "$category_index_header" -lt "$num_categories" ]; then
             category_name="${SERVICE_CATEGORIES_ARRAY[$category_index_header]}"
-            printf "%s%s" "$category_name" "$col_separator" # Category Header + Separator
+            truncated_category_name=$(truncate_string "$category_name" "$max_name_length") # Truncate category name
+            printf "%s%s" "$truncated_category_name" "$col_separator" # Truncated Category + Separator
         else
             printf "%s%s" "" "$col_separator" # Separator if no category
         fi
@@ -81,7 +94,8 @@ for output_row in $(seq 1 $((num_output_rows))); do
                 service_index=$row_index # Row index is the service index within category
                 if [ "$service_index" -lt "${#SERVICES_IN_CATEGORY_ARRAY[@]}" ]; then
                     service_id="${SERVICES_IN_CATEGORY_ARRAY[$service_index]}"
-                    printf "%s%s" "$service_id" "$col_separator" # Service ID + Separator
+                    truncated_service_id=$(truncate_string "$service_id" "$max_name_length") # Truncate service ID
+                    printf "%s%s" "$truncated_service_id" "$col_separator" # Truncated Service ID + Separator
                 else
                     printf "%s%s" "" "$col_separator" # Separator if no service
                 fi

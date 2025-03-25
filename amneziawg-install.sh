@@ -623,6 +623,8 @@ function installQuestions() {
 		CLIENT_DNS_IPV6_2=""
 	fi
 
+echo "Debug: About to call getRoutingOption function..."  <--- Add this line
+
 	# Configure default traffic routing for new clients - using function
 	ROUTE_OPTION=$(getRoutingOption)
 
@@ -1584,7 +1586,7 @@ handle_error() {
     # Cleanup if needed
     exit $exit_code
 }
-#trap 'handle_error' ERR
+trap 'handle_error' ERR
 
 # Fix for potential syntax errors
 set +e  # Continue execution even if there's an error

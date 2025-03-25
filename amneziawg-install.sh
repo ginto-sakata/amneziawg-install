@@ -487,6 +487,8 @@ function initialCheck() {
 }
 
 function getRoutingOption() {
+    echo "Debug: Entering getRoutingOption function"  # Debugging line
+
     echo ""
     echo -e "${GREEN}Configure default traffic routing for new clients${NC}"
     echo "1) Route all traffic (recommended)"

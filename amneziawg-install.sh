@@ -487,27 +487,16 @@ function initialCheck() {
 }
 
 function getRoutingOption() {
-    echo "Debug: Entering getRoutingOption function"  # Debugging entry point
+    echo "Entering getRoutingOption function (DEBUG - PLAIN TEXT)" # Debugging entry point
 
-    echo "Debug: Printing newline"
     echo ""
-
-    echo "Debug: Printing header line with color codes"
-    echo -e "${GREEN}Configure default traffic routing for new clients${NC}"
-
-    echo "Debug: Printing option 1"
-    echo "1) Route all traffic (recommended)"
-
-    echo "Debug: Printing option 2"
-    echo "2) Route specific websites only"
-
-    echo "Debug: Printing option 3"
-    echo "3) Route websites blocked in Russia"
-
-    echo "Debug: Printing read prompt"
+    echo "Configure default traffic routing for new clients (PLAIN TEXT MENU)" # Plain text header
+    echo "1) Route all traffic (recommended)" # Plain text option 1
+    echo "2) Route specific websites only" # Plain text option 2
+    echo "3) Route websites blocked in Russia" # Plain text option 3
     read -rp "Select an option [1-3]: " ROUTE_OPTION
 
-    echo "Debug: Selected ROUTE_OPTION is: '$ROUTE_OPTION'" # Debugging output of ROUTE_OPTION
+    echo "Selected ROUTE_OPTION is: '$ROUTE_OPTION' (PLAIN TEXT DEBUG)" # Plain text debug output
     echo "$ROUTE_OPTION" # Output the selected option
 }
 
@@ -623,7 +612,6 @@ function installQuestions() {
 		CLIENT_DNS_IPV6_2=""
 	fi
 
-echo "Debug: About to call getRoutingOption function..."  <--- Add this line
 
 	# Configure default traffic routing for new clients - using function
 	ROUTE_OPTION=$(getRoutingOption)

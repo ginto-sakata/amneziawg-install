@@ -48,15 +48,17 @@ col_width=15   # Width of each column (adjust if needed)
 num_services=${#SERVICE_IDS_ARRAY[@]}
 num_cols=$(( (num_services + rows - 1) / rows )) # Calculate required columns
 
-# Loop through rows, then columns to print in desired order
-for row_index in $(seq 0 $((rows - 1))); do
-    for col_index in $(seq 0 $((num_cols - 1))); do
-        service_index=$((row_index + col_index * rows))
+service_index=0 # Initialize service index counter
 
+# Loop through rows
+for row_index in $(seq 0 $((rows - 1))); do
+    # Loop through columns
+    for col_index in $(seq 0 $((num_cols - 1))); do
         if [ "$service_index" -lt "$num_services" ]; then
             service_id="${SERVICE_IDS_ARRAY[$service_index]}"
             col_offset=$((col_index * col_width))
             printf "%${col_offset}s%-${col_width}s" "" "$service_id"
+            service_index=$((service_index + 1)) # Increment service index
         else
             # If no more services for this position, print spacing
             col_offset=$((col_index * col_width))
@@ -70,7 +72,7 @@ done
 echo -e "\n\n"
 
 
-    # ... (rest of your script for CIDR processing - unchanged) ...
+    # ... (rest of your script for CIDR processing - unchanged, but using SERVICE_IDS_JSON for check) ...
 
     find "$IPLIST_CONFIG_DIR" -name "*.json" -type f | while read -r service_file; do
         service_id=$(basename "$service_file" .json)

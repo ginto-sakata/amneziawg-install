@@ -82,7 +82,3 @@ done
 
 echo -e "\n${BOLD_GREEN}Data generation complete. File saved to: $OUTPUT_DIR${RESET_COLOR}" # Formatted Completion Message
 echo -e "${BOLD_GREEN}  - cidrs.json${RESET_COLOR}" # Formatted File Output Message
-
-
-# Move cursor down after processing to avoid overwriting terminal input - Not really needed in scrolling output, but kept for consistency
-echo -e "\n\n"

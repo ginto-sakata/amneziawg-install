@@ -1417,8 +1417,6 @@ function startWebServer() {
         WEBSERVER_ADDRESS=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v 127.0.0.1 | head -1)
     fi
 
-    WEBSERVER_ADDRESS=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v 127.0.0.1 | head -1)
-
     # Choose a port
     WEB_PORT=8080
 

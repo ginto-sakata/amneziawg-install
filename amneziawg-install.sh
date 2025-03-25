@@ -918,7 +918,8 @@ H4 = ${H4}
 MTU = ${MTU}" > /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf
     fi
 
-    # Add firewall rules
+      
+# Add firewall rules
     if pgrep firewalld; then
         FIREWALLD_IPV4_ADDRESS=$(echo "${SERVER_WG_IPV4}" | cut -d"." -f1-3)".0"
         FIREWALLD_IPV6_ADDRESS=$(echo "${SERVER_WG_IPV6}" | sed 's/:[^:]*$/:0/')
@@ -927,27 +928,29 @@ PostUp = firewall-cmd --add-port ${SERVER_PORT}/udp
 PostUp = firewall-cmd --add-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade'
 PostDown = firewall-cmd --zone=public --remove-interface=${SERVER_WG_NIC}
 PostDown = firewall-cmd --remove-port ${SERVER_PORT}/udp
-PostDown = firewall-cmd --remove-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade'" >> /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf
-        if [[ ${ENABLE_IPV6} == 'y' ]]; then
+PostDown = firewall-cmd --remove-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade'" >> /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+        if [[ ${ENABLE_IPV6} == 'y' ]]; then  # --- ADDED 'then' HERE ---
             echo "PostUp = firewall-cmd --add-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS}/64 masquerade'
-PostDown = firewall-cmd --remove-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS}/64 masquerade'" >> /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf
+PostDown = firewall-cmd --remove-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS}/64 masquerade'" >> /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
         fi
     else
         echo "PostUp = iptables -I INPUT -p udp --dport ${SERVER_PORT} -j ACCEPT
 PostUp = iptables -I FORWARD -i ${SERVER_PUB_NIC} -o ${SERVER_WG_NIC} -j ACCEPT
 PostUp = iptables -I FORWARD -i ${SERVER_WG_NIC} -j ACCEPT
-PostUp = iptables -t nat -A POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
-PostDown = iptables -D INPUT -p udp --dport ${SERVER_PORT} -j ACCEPT
-PostDown = iptables -D FORWARD -i ${SERVER_PUB_NIC} -o ${SERVER_WG_NIC} -j ACCEPT
-PostDown = iptables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT
-PostDown = iptables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE" >> /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
-        if [[ ${ENABLE_IPV6} == 'y' ]]; then
+        PostUp = iptables -t nat -A POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
+        PostDown = iptables -D INPUT -p udp --dport ${SERVER_PORT} -j ACCEPT
+        PostDown = iptables -D FORWARD -i ${SERVER_PUB_NIC} -o ${SERVER_WG_NIC} -j ACCEPT
+        PostDown = iptables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT
+        PostDown = iptables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE" >> /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+        if [[ ${ENABLE_IPV6} == 'y' ]]; then # --- ADDED 'then' HERE ---
             echo "PostUp = ip6tables -I FORWARD -i ${SERVER_WG_NIC} -j ACCEPT
-PostUp = ip6tables -t nat -A POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
-PostDown = ip6tables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT
-PostDown = ip6tables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE" >> /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+            PostUp = ip6tables -t nat -A POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
+            PostDown = ip6tables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT
+            PostDown = ip6tables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE" >> /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
         fi
-    fi
+    fi #this is line 950 in the log
+
+    
 
     # Enable and start AmneziaWG service
     systemctl start "awg-quick@${SERVER_WG_NIC}"

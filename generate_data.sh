@@ -43,21 +43,26 @@ SERVICE_IDS=$(jq -r 'keys[]' "$SERVICES_FILE")
 # Process each service file in the config directory
 echo "Processing service files..."
 columns=3      # Set number of columns
-rows=20        # Set number of rows per column
+rows=20        # Set number of rows per column (not directly used for column layout anymore)
 counter=0      # Keeps track of the printed service index
+col_width=26   # Width of each column (adjust if needed)
 
 find "$IPLIST_CONFIG_DIR" -name "*.json" -type f | while read -r service_file; do
     service_id=$(basename "$service_file" .json)
-    
+
     if ! echo "$SERVICE_IDS" | grep -q "^$service_id$"; then
         continue
     fi
 
-    row=$((counter % rows))
-    col=$((counter / rows))
+    col=$((counter % columns))
+    row=$((counter / columns)) # Not used for vertical positioning anymore
 
-    # Move cursor to correct position
-    printf "\033[%d;%dH%-25s" $((row + 2)) $((col * 26 + 1)) "$service_id"
+    # Calculate spacing for columns
+    col_offset=$((col * col_width))
+
+    # Print with spacing, no cursor positioning
+    printf "%${col_offset}s%-${col_width}s" "" "$service_id"
+    echo "" # Add a newline after each service ID
 
     counter=$((counter + 1))
 done
@@ -66,16 +71,15 @@ done
 echo -e "\n\n"
 
 
-    
     # Extract CIDRs from service file
     cidrs=$(jq -c '.cidr4 // []' "$service_file")
-    
+
     # Skip if no CIDRs
     if [ "$cidrs" = "[]" ] || [ -z "$cidrs" ]; then
         echo "  No CIDRs found, skipping"
         continue
     fi
-    
+
     # Add service to JSON with CIDRs only
     jq --arg id "$service_id" \
        --argjson cidrs "$cidrs" \

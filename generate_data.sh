@@ -21,7 +21,7 @@ if command -v jq &> /dev/null; then
     HAS_JQ=1
 else
     echo "Error: jq is required for this script"
-    echo "Install jq: apt-get install jq"
+    echo "Install jq: jq (sudo apt install jq)"
     exit 1
 fi
 
@@ -37,42 +37,40 @@ EOF
 echo "Loading service categories from directories..."
 SERVICE_CATEGORIES_ARRAY=($(find "$IPLIST_CONFIG_DIR" -maxdepth 1 -type d -not -path "$IPLIST_CONFIG_DIR" -printf "%f\n")) # Get folder names
 
-# --- Formatting Variables ---
-RESET_COLOR="\033[0m"        # ANSI escape code to reset color
-BOLD_GREEN="\033[1;32m"     # ANSI escape code for bold green
-
-# --- Layout Variables ---
-rows=20        # Set number of rows per column
-col_width=15   # Width of each column (Adjust for spacing - reduced to 15)
+# --- Layout Variables (Extreme Compactness & Debugging) ---
+rows=10        # Further reduced rows for very tall, narrow columns
 cols_per_row=4 # Number of columns per output row
+col_separator=" | " # Very distinct column separator (pipe with spaces)
+col_width=5      # Setting col_width to a very small value (though not directly used now)
 
 num_categories=${#SERVICE_CATEGORIES_ARRAY[@]}
 num_output_rows=$(( (num_categories + cols_per_row - 1) / cols_per_row )) # Number of output rows needed
 
 output_row_index=0 # Counter for output rows
 
-# Process service categories and services - Display with formatting
-echo "Processing service categories with formatting..."
+# Process service categories and services - EXTREME COMPACT OUTPUT
+echo "Processing service categories - EXTREME COMPACT OUTPUT..."
 
 # Loop through output rows (sets of columns)
 for output_row in $(seq 1 $((num_output_rows))); do
 
     # Print category headers for this row
+    echo -n "Headers: " # Debugging prefix for headers
     for col_index_header in $(seq 0 $((cols_per_row - 1))); do
         category_index_header=$((output_row_index * cols_per_row + col_index_header))
         if [ "$category_index_header" -lt "$num_categories" ]; then
             category_name="${SERVICE_CATEGORIES_ARRAY[$category_index_header]}"
-            col_offset_header=$((col_index_header * col_width))
-            printf "%${col_offset_header}s${BOLD_GREEN}%-${col_width}s${RESET_COLOR}" "" "$category_name" # Bold Green Category Header
+            printf "%s%s" "$category_name" "$col_separator" # Category Header + Separator
         else
-            col_offset_header=$((col_index_header * col_width))
-            printf "%${col_offset_header}s%-${col_width}s" "" "" # Spacing if no category
+            printf "%s%s" "" "$col_separator" # Separator if no category
         fi
     done
     echo "" # Newline after category headers
 
     # Print service IDs under each category for this row
+    echo -n "Services: " # Debugging prefix for services
     for row_index in $(seq 0 $((rows - 1))); do
+        echo -n "  Row $row_index: " # Debugging row number
         for col_index_services in $(seq 0 $((cols_per_row - 1))); do
             category_index_services=$((output_row_index * cols_per_row + col_index_services))
             if [ "$category_index_services" -lt "$num_categories" ]; then
@@ -83,15 +81,12 @@ for output_row in $(seq 1 $((num_output_rows))); do
                 service_index=$row_index # Row index is the service index within category
                 if [ "$service_index" -lt "${#SERVICES_IN_CATEGORY_ARRAY[@]}" ]; then
                     service_id="${SERVICES_IN_CATEGORY_ARRAY[$service_index]}"
-                    col_offset_services=$((col_index_services * col_width))
-                    printf "%${col_offset_services}s%-${col_width}s" "" "$service_id" # Plain Service ID
+                    printf "%s%s" "$service_id" "$col_separator" # Service ID + Separator
                 else
-                    col_offset_services=$((col_index_services * col_width))
-                    printf "%${col_offset_services}s%-${col_width}s" "" "" # Spacing if no service
+                    printf "%s%s" "" "$col_separator" # Separator if no service
                 fi
             else
-                col_offset_services=$((col_index_services * col_width))
-                printf "%${col_offset_services}s%-${col_width}s" "" "" # Spacing if no category
+                printf "%s%s" "" "$col_separator" # Separator if no category
             fi
         done
         echo "" # Newline after each row of services
@@ -106,7 +101,7 @@ done
 echo -e "\n\n"
 
 
-# --- CIDR Processing Section (Full and Corrected) ---
+# --- CIDR Processing Section (Full and Corrected - No Changes Here) ---
 
 echo "Processing CIDR data for each service..."
 

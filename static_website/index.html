@@ -143,17 +143,28 @@
         }
         textarea#output {
             height: 60px;
+            font-size: 12px;
+            width: 50%;
+            position: absolute;
+            right: 10px;
+            top: 50px;
+            z-index: 2;
         }
         .rkn-chan-container {
             position: absolute;
             right: 0;
             top: -180px;
-            z-index: -1;
+            z-index: 1;
         }
         .rkn-chan-container img {
             height: 400px;
             object-fit: cover;
             object-position: top;
+        }
+        /* Add z-index to main container to be above rkn-chan */
+        .bg-white.rounded-xl {
+            position: relative;
+            z-index: 3;
         }
     </style>
 </head>
@@ -182,6 +193,8 @@
             </div>
             <p class="text-gray-600 max-w-3xl">Select the websites and services you want to access through AmneziaWG or WireGuard VPN.<br><br>
             Your selections will generate a list of IP ranges to use in your client's configuration (AllowedIPs).</p>
+            <!-- Made textarea visible initially with default value -->
+            <textarea id="output" class="w-full p-4 border border-gray-300 rounded-md shadow-inner font-mono text-sm bg-gray-50 focus:ring-blue-500 focus:border-blue-500" readonly>0.0.0.0/0</textarea>
         </header>
 
         <div class="bg-white rounded-xl shadow-md p-6 mb-8">
@@ -218,16 +231,12 @@
             </div>
         </div>
 
-        <!-- Hidden textarea for copying -->
-        <textarea id="output" class="hidden w-full h-32 p-4 border border-gray-300 rounded-md shadow-inner font-mono text-sm bg-gray-50 focus:ring-blue-500 focus:border-blue-500" readonly></textarea>
-    </div>
-
-    <div id="notification" class="notification fixed bottom-8 left-1/2 bg-green-600 text-white px-6 py-3 rounded-md shadow-lg hidden">
-        <div class="flex items-center">
-            <i class="fas fa-check-circle mr-2"></i>
-            <span>Copied to clipboard!</span>
+        <div id="notification" class="notification fixed bottom-8 left-1/2 bg-green-600 text-white px-6 py-3 rounded-md shadow-lg hidden">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle mr-2"></i>
+                <span>Copied to clipboard!</span>
+            </div>
         </div>
-    </div>
 
     <script>
         // Store loaded service data
@@ -742,7 +751,6 @@
                     
                     // Join with commas
                     output.value = uniqueCIDRs.join(',');
-                    output.classList.remove('hidden');
                     
                     // Copy to clipboard
                     output.select();

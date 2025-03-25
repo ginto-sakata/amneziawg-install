@@ -1,0 +1,240 @@
+{
+    "categories": {
+        "video": {
+            "name": "Video Streaming",
+            "services": [
+                "youtube.com",
+                "netflix.com",
+                "spotify.com",
+                "crunchyroll.com",
+                "pixiv.net",
+                "x.com",
+                "kino.pub",
+                "doramy.club",
+                "filmix.fm",
+                "kinobase.org",
+                "themoviedb.org",
+                "kinovod.pro",
+                "dorama.live",
+                "lostfilm.tv",
+                "hdrezka.ag",
+                "zeflix.online",
+                "kinozal.tv",
+                "currenttime.tv",
+                "kavkaz-uzel.eu",
+                "newstudio.tv",
+                "amedia.site"
+            ]
+        },
+        "messengers": {
+            "name": "Messengers",
+            "services": [
+                "discord.com",
+                "discord.gg",
+                "discord.media",
+                "telegram.org",
+                "whatsapp.com",
+                "messenger.com",
+                "viber.com",
+                "signal.org"
+            ]
+        },
+        "social": {
+            "name": "Social Media",
+            "services": [
+                "x.com",
+                "instagram.com",
+                "facebook.com",
+                "linkedin.com",
+                "tiktok.com",
+                "quora.com",
+                "soundcloud.com",
+                "medium.com",
+                "patreon.com",
+                "babook.org"
+            ]
+        },
+        "news": {
+            "name": "News",
+            "services": [
+                "bbc.com",
+                "dw.com",
+                "hrw.org",
+                "ovd.info",
+                "moscowtimes.ru",
+                "novayagazeta.ru",
+                "bellingcat.com",
+                "tvrain.ru",
+                "memohrc.org",
+                "meduza.io",
+                "korrespondent.net",
+                "gordonua.com",
+                "golosameriki.com",
+                "holod.media",
+                "svoboda.org",
+                "verstka.media",
+                "vot-tak.tv",
+                "proekt.media",
+                "cherta.media",
+                "semnasem.org",
+                "navalny.com",
+                "polit.ru",
+                "kasparov.ru",
+                "unian.net",
+                "krymr.com"
+            ]
+        },
+        "media": {
+            "name": "Media",
+            "services": [
+                "thevillage.ru",
+                "paperpaper.ru",
+                "tayga.info",
+                "echofm.online",
+                "exler.ru",
+                "agents.media",
+                "euronews.com",
+                "ej.ru",
+                "istories.media",
+                "newtimes.ru",
+                "colta.ru",
+                "radiosvoboda.org",
+                "agentura.ru",
+                "ehorussia.com",
+                "thetruestory.news",
+                "doxa.team",
+                "theins.ru",
+                "gulagu.net",
+                "zona.media",
+                "the-village.ru"
+            ]
+        },
+        "ai": {
+            "name": "AI Tools",
+            "services": [
+                "chatgpt.com",
+                "claude.ai",
+                "grammarly.com",
+                "jetbrains@grazie.ai",
+                "copilot"
+            ]
+        },
+        "entertainment": {
+            "name": "Entertainment",
+            "services": [
+                "chess.com",
+                "duolingo.com",
+                "notion.so",
+                "miro.com",
+                "zapier.com",
+                "wikiart.org",
+                "younettranslate.com",
+                "ficbook.net",
+                "infinitenovel.eu"
+            ]
+        },
+        "anime": {
+            "name": "Anime & Manga",
+            "services": [
+                "anilibria.tv",
+                "nyaa.si",
+                "nyaa.land",
+                "danbooru.donmai.us",
+                "gelbooru.com",
+                "animego.org",
+                "jut.su",
+                "kodik.info",
+                "anidub.pro",
+                "mangahub.ru",
+                "bato.to",
+                "mangapark.net",
+                "yummyanime.tv",
+                "kara.su",
+                "rulate.ru",
+                "hentaichan.live",
+                "vndb.org"
+            ]
+        },
+        "tools": {
+            "name": "Tools & Utilities",
+            "services": [
+                "10minutemail.com",
+                "connect.garmin.com",
+                "jetbrains.com",
+                "jetbrains@cdn",
+                "linktr.ee",
+                "trainingpeaks.com",
+                "prostovpn.org",
+                "proxyline.net",
+                "basecamp.com",
+                "canva.com",
+                "tuta.com",
+                "whoop.com",
+                "elevenlabs.io",
+                "make.com",
+                "strava.com",
+                "bestchange.ru"
+            ]
+        },
+        "adult": {
+            "name": "Adult Content",
+            "services": [
+                "pornhub.com",
+                "xhamster.com",
+                "xhamsterlive.com",
+                "xnxx.ru.com",
+                "xvideos.com",
+                "redgifs.com",
+                "pornolab.net",
+                "rule34.xxx",
+                "beeg.com",
+                "reddxxx.com",
+                "redtube.com",
+                "hqporner.com"
+            ]
+        },
+        "torrent": {
+            "name": "Torrent Sites",
+            "services": [
+                "rutracker.org",
+                "rutor.info",
+                "thepiratebay.org",
+                "1337x.to",
+                "nnmclub.to",
+                "booktracker.org",
+                "rustorka.com",
+                "filmitorrent.net",
+                "torrent.by",
+                "kinozal.me"
+            ]
+        },
+        "misc": {
+            "name": "Miscellaneous",
+            "services": [
+                "ralphlauren.eu",
+                "vavada.com",
+                "7k.casino",
+                "combotech",
+                "refactoring.guru",
+                "znanija.com",
+                "mrakopedia.net",
+                "naukri.com",
+                "aliexpress.com"
+            ]
+        }
+    },
+    "order": [
+        "video",
+        "messengers",
+        "social",
+        "news",
+        "media",
+        "ai",
+        "entertainment",
+        "anime",
+        "tools",
+        "adult",
+        "torrent",
+        "misc"
+    ]
+} 

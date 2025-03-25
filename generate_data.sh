@@ -44,7 +44,7 @@ SERVICE_IDS_ARRAY=($(jq -r '.[]' <<< "$SERVICE_IDS_JSON")) # Convert JSON array 
 # Process each service file in the config directory
 echo "Processing service files..."
 rows=20        # Set number of rows per column
-col_width=15   # Width of each column (adjust if needed)
+col_width=20   # Width of each column (adjust if needed - trying a fixed value)
 num_services=${#SERVICE_IDS_ARRAY[@]}
 num_cols=$(( (num_services + rows - 1) / rows )) # Calculate required columns
 
@@ -57,6 +57,10 @@ for row_index in $(seq 0 $((rows - 1))); do
         if [ "$service_index" -lt "$num_services" ]; then
             service_id="${SERVICE_IDS_ARRAY[$service_index]}"
             col_offset=$((col_index * col_width))
+
+            # Debugging: Print column and offset
+            # echo "Row: $row_index, Col: $col_index, Index: $service_index, Offset: $col_offset, Service: $service_id"
+
             printf "%${col_offset}s%-${col_width}s" "" "$service_id"
             service_index=$((service_index + 1)) # Increment service index
         else
@@ -72,12 +76,12 @@ done
 echo -e "\n\n"
 
 
-    # ... (rest of your script for CIDR processing - unchanged, but using SERVICE_IDS_JSON for check) ...
+    # ... (rest of your script for CIDR processing - modified to suppress "true" output and use SERVICE_IDS_JSON for check) ...
 
     find "$IPLIST_CONFIG_DIR" -name "*.json" -type f | while read -r service_file; do
         service_id=$(basename "$service_file" .json)
 
-        if ! echo "$SERVICE_IDS_JSON" | jq -e 'contains(["'$service_id'"])'; then # Use jq for array check
+        if ! echo "$SERVICE_IDS_JSON" | jq -e 'contains(["'$service_id'"])' > /dev/null; then # Suppress jq output
             continue
         fi
 

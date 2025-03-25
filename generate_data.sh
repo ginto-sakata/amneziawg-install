@@ -2,14 +2,14 @@
 
 # Directory containing the IP list configuration files
 
-WORKING_DIR=$(pwd)
-IPLIST_DIR="$WORKING_DIR/iplist"
-CONFIG_DIR="$WORKING_DIR/iplist/config"
-WEBSITE_DIR="$WORKING_DIR/static_website"
-SERVICES_FILE="$WORKING_DIR/static_website/services.json"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+IPLIST_CONFIG_DIR="$SCRIPT_DIR/iplist/config"
+OUTPUT_DIR="$SCRIPT_DIR/static_website"
+SERVICES_FILE="$SCRIPT_DIR/static_website/services.json"
 
 
-echo "Generating data from $CONFIG_DIR to $WEBSITE_DIR..."
+echo "Generating data from $IPLIST_CONFIG_DIR to $OUTPUT_DIR..."
 echo "services file: $SERVICES_FILE"
 
 # Check if required files exist
@@ -29,7 +29,7 @@ else
 fi
 
 # Create initial JSON structure
-cat > "$WEBSITE_DIR/cidrs.json" << EOF
+cat > "$OUTPUT_DIR/cidrs.json" << EOF
 {
   "services": {
   }
@@ -42,7 +42,7 @@ SERVICE_IDS=$(jq -r 'keys[]' "$SERVICES_FILE")
 
 # Process each service file in the config directory
 echo "Processing service files..."
-find "$CONFIG_DIR" -name "*.json" -type f | while read -r service_file; do
+find "$IPLIST_CONFIG_DIR" -name "*.json" -type f | while read -r service_file; do
     # Get service ID from filename
     service_id=$(basename "$service_file" .json)
     
@@ -67,10 +67,10 @@ find "$CONFIG_DIR" -name "*.json" -type f | while read -r service_file; do
     jq --arg id "$service_id" \
        --argjson cidrs "$cidrs" \
        '.services[$id] = {"cidrs": $cidrs}' \
-       "$WEBSITE_DIR/cidrs.json" > "$WEBSITE_DIR/cidrs.json.tmp"
-    mv "$WEBSITE_DIR/cidrs.json.tmp" "$WEBSITE_DIR/cidrs.json"
+       "$OUTPUT_DIR/cidrs.json" > "$OUTPUT_DIR/cidrs.json.tmp"
+    mv "$OUTPUT_DIR/cidrs.json.tmp" "$OUTPUT_DIR/cidrs.json"
 done
 
 
-echo "Data generation complete. File saved to: $WEBSITE_DIR"
+echo "Data generation complete. File saved to: $OUTPUT_DIR"
 echo "  - cidrs.json"

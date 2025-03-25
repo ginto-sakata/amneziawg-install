@@ -243,10 +243,10 @@ function migrateWireGuard() {
         ALLOWED_IPS=0.0.0.0/0
     fi
 
-    # Read ALLOWED_IPS from default_routing.conf file
-    if [ -f "/etc/amnezia/amneziawg/default_routing.conf" ]; then
-        ALLOWED_IPS=$(cat /etc/amnezia/amneziawg/default_routing.conf)
-        echo -e "${GREEN}Using default routing from /etc/amnezia/amneziawg/default_routing.conf${NC}"
+    # Read ALLOWED_IPS from default_routing file
+    if [ -f "/etc/amnezia/amneziawg/default_routing" ]; then
+        ALLOWED_IPS=$(cat /etc/amnezia/amneziawg/default_routing)
+        echo -e "${GREEN}Using default routing from /etc/amnezia/amneziawg/default_routing${NC}"
     else
         echo -e "${ORANGE}Default routing configuration file not found. Using 0.0.0.0/0 as default.${NC}"
         ALLOWED_IPS="0.0.0.0/0" # Fallback if file is missing
@@ -486,16 +486,6 @@ function initialCheck() {
     detectExistingWireGuard
 }
 
-function getRoutingOption() {
-    echo ""
-    echo -e "${GREEN}Configure default traffic routing for new clients${NC}"
-    echo "1) Route all traffic (recommended)"
-    echo "2) Route specific websites only"
-    echo "3) Route websites blocked in Russia"
-    read -rp "Select an option [1-3]: " ROUTE_OPTION
-    echo "$ROUTE_OPTION"
-}
-
 function installQuestions() {
 	# Clear screen before welcome message
 	clear
@@ -588,7 +578,7 @@ function installQuestions() {
 		read -rp "What port do you want AmneziaWG to listen to? [1-65535]: " -e -i "${RANDOM_PORT}" SERVER_PORT
 	done
 
-    # Configure default traffic routing for new clients - using function
+    # Configure default traffic routing for new clients
     echo ""
     echo -e "${GREEN}Configure default traffic routing for new clients${NC}"  # Assuming GREEN and NC are defined
     echo "1) Route all traffic (recommended)"
@@ -597,15 +587,15 @@ function installQuestions() {
 
     # --- Input Validation Loop ---
     while true; do
-    read -rp "Select an option [1-3]: " -e -i "1" ROUTE_OPTION
+        read -rp "Select an option [1-3]: " -e -i "1" ROUTE_OPTION
 
-    # Check if the input is valid (1, 2, or 3)
-    if [[ "$ROUTE_OPTION" =~ ^[1-3]$ ]]; then
-        break  # Exit the loop if input is valid
-    else
-        echo "Invalid input.  Please enter 1, 2, or 3."
-        # No need to clear ROUTE_OPTION, -i will handle re-entry
-    fi
+        # Check if the input is valid (1, 2, or 3)
+        if [[ "$ROUTE_OPTION" =~ ^[1-3]$ ]]; then
+            break  # Exit the loop if input is valid
+        else
+            echo "Invalid input.  Please enter 1, 2, or 3."
+            # No need to clear ROUTE_OPTION, -i will handle re-entry
+        fi
     done
     # --- End of Input Validation Loop ---
 
@@ -1003,19 +993,46 @@ EOF
 }
 
 function configureObfuscationSettings() {
-	echo ""
+    # --- Store original settings for comparison ---
+    local orig_JC="$JC"
+    local orig_JMIN="$JMIN"
+    local orig_JMAX="$JMAX"
+    local orig_S1="$S1"
+    local orig_S2="$S2"
+    local orig_H1="$H1"
+    local orig_H2="$H2"
+    local orig_H3="$H3"
+    local orig_H4="$H4"
+    local orig_MTU="$MTU"
+
+    # --- Display Current Settings ---
+    echo ""
     echo "╔═══════════════════════════════════════════════╗"
     echo "║          Configure Obfuscation Settings       ║"
     echo "╚═══════════════════════════════════════════════╝"
-	echo ""
+    echo ""
     echo "These settings control how AmneziaWG traffic is obfuscated to avoid detection."
     echo ""
+    echo -e "${ORANGE}Current Obfuscation Settings:${NC}"
+    echo "Junk coefficient (Jc): ${JC}"
+    echo "Minimum junk size (Jmin): ${JMIN}"
+    echo "Maximum junk size (Jmax): ${JMAX}"
+    echo "Init packet junk size (S1): ${S1}"
+    echo "Response packet junk size (S2): ${S2}"
+    echo "Magic header 1 (H1): ${H1}"
+    echo "Magic header 2 (H2): ${H2}"
+    echo "Magic header 3 (H3): ${H3}"
+    echo "Magic header 4 (H4): ${H4}"
+    echo "MTU: ${MTU}"
+    echo ""
 
+    # --- User Input ---
     echo "Select obfuscation preset:"
     echo "1) Mobile"
     echo "2) Standard"
     echo "3) Custom settings"
-    read -rp "Select an option [1-3]: " OBFUSCATION_PRESET
+    echo "4) Back (no changes)"
+    read -rp "Select an option [1-4]: " OBFUSCATION_PRESET
 
     case "${OBFUSCATION_PRESET}" in
     1)
@@ -1053,50 +1070,94 @@ function configureObfuscationSettings() {
         echo -e "${GREEN}Enter custom obfuscation settings:${NC}"
         read -rp "Junk coefficient (Jc) [1-10, default 4]: " -e CUSTOM_JC
         JC=${CUSTOM_JC:-4}
+        # Input validation for JC
+        if ! [[ "$JC" =~ ^[1-9]|10$ ]]; then
+          echo -e "${RED}Invalid input for Jc. Using default value 4.${NC}"
+          JC=4
+        fi
 
         read -rp "Minimum junk size (Jmin) [10-200, default 40]: " -e CUSTOM_JMIN
         JMIN=${CUSTOM_JMIN:-40}
+        # Input validation for JMIN
+        if ! [[ "$JMIN" =~ ^[1-9][0-9]?$|^1[0-9][0-9]$|^200$ ]]; then
+            echo -e "${RED}Invalid input for Jmin. Using default value 40.${NC}"
+            JMIN=40
+        fi
 
         read -rp "Maximum junk size (Jmax) [${JMIN}-500, default 70]: " -e CUSTOM_JMAX
         JMAX=${CUSTOM_JMAX:-70}
+        # Input validation for JMAX, must be >= JMIN and <= 500
+        if ! [[ "$JMAX" =~ ^[1-9][0-9]{0,2}$|^[1-4][0-9]{2}$|^500$ ]] || [[ "$JMAX" -lt "$JMIN" ]]; then
+          echo -e "${RED}Invalid input for Jmax. Using default value 70.${NC}"
+          JMAX=70
+        fi
 
         read -rp "Init packet junk size (S1) [10-1280, default 50]: " -e CUSTOM_S1
         S1=${CUSTOM_S1:-50}
+          # Input validation for S1
+        if ! [[ "$S1" =~ ^[1-9][0-9]?$|^[1-9][0-9]{2}$|^1[0-1][0-9]{2}$|^12[0-7][0-9]$|^1280$ ]]; then
+            echo -e "${RED}Invalid input for S1. Using default value 50.${NC}"
+            S1=50
+        fi
 
         read -rp "Response packet junk size (S2) [10-1280, default 100]: " -e CUSTOM_S2
         S2=${CUSTOM_S2:-100}
+         # Input validation for S2
+        if ! [[ "$S2" =~ ^[1-9][0-9]?$|^[1-9][0-9]{2}$|^1[0-1][0-9]{2}$|^12[0-7][0-9]$|^1280$ ]]; then
+            echo -e "${RED}Invalid input for S2. Using default value 100.${NC}"
+            S2=100
+        fi
 
         read -rp "Magic header 1 (H1) [5-999999, default random]: " -e CUSTOM_H1
         H1=${CUSTOM_H1:-$((RANDOM * 100000 + 10000))}
+        # Validate H1
+        if ! [[ "$H1" =~ ^[5-9]|[1-9][0-9]{1,5}$ ]]; then
+            echo -e "${RED}Invalid input for H1. Using a random value.${NC}"
+            H1=$((RANDOM * 100000 + 10000))
+        fi
 
         read -rp "Magic header 2 (H2) [5-999999, default random]: " -e CUSTOM_H2
         H2=${CUSTOM_H2:-$((RANDOM * 100000 + 20000))}
+        # Validate H2
+        if ! [[ "$H2" =~ ^[5-9]|[1-9][0-9]{1,5}$ ]]; then
+            echo -e "${RED}Invalid input for H2. Using a random value.${NC}"
+            H2=$((RANDOM * 100000 + 20000))
+        fi
 
         read -rp "Magic header 3 (H3) [5-999999, default random]: " -e CUSTOM_H3
         H3=${CUSTOM_H3:-$((RANDOM * 100000 + 30000))}
+        # Validate H3
+        if ! [[ "$H3" =~ ^[5-9]|[1-9][0-9]{1,5}$ ]]; then
+            echo -e "${RED}Invalid input for H3. Using a random value.${NC}"
+            H3=$((RANDOM * 100000 + 30000))
+        fi
 
         read -rp "Magic header 4 (H4) [5-999999, default random]: " -e CUSTOM_H4
         H4=${CUSTOM_H4:-$((RANDOM * 100000 + 40000))}
+        # Validate H4
+        if ! [[ "$H4" =~ ^[5-9]|[1-9][0-9]{1,5}$ ]]; then
+            echo -e "${RED}Invalid input for H4. Using a random value.${NC}"
+            H4=$((RANDOM * 100000 + 40000))
+        fi
 
         read -rp "MTU [500-1500, default 1280]: " -e CUSTOM_MTU
         MTU=${CUSTOM_MTU:-1280}
-
+        # Validate MTU input
+        if ! [[ "$MTU" =~ ^[5-9][0-9]{2}$|^1[0-4][0-9]{2}$|^1500$ ]]; then
+          echo -e "${RED}Invalid MTU value.  Using default 1280.${NC}"
+          MTU=1280
+        fi
         echo -e "${GREEN}Using custom obfuscation settings.${NC}"
         ;;
+    4)
+        echo -e "${GREEN}Returning to the previous menu. No changes were made.${NC}"
+        return  # Exit the function without changes
+        ;;
     *)
-        echo -e "${RED}Invalid option. Using Mobile preset.${NC}"
-        JC=4
-        JMIN=40
-        JMAX=70
-        S1=50
-        S2=100
-        H1=$((RANDOM * 100000 + 10000))
-        H2=$((RANDOM * 100000 + 20000))
-        H3=$((RANDOM * 100000 + 30000))
-        H4=$((RANDOM * 100000 + 40000))
-        MTU=1280
-		;;
-	esac
+        echo -e "${RED}Invalid option.  No changes were made.${NC}"
+        return # Exit the function without changes
+        ;;
+    esac
 
     # Ensure all headers are unique and within range
     while [[ ${H1} -lt 5 || ${H2} -lt 5 || ${H3} -lt 5 || ${H4} -lt 5 ||
@@ -1109,51 +1170,47 @@ function configureObfuscationSettings() {
         H4=$((RANDOM * 100000 + 40000))
     done
 
-    # Display the settings
-	echo ""
-    echo -e "${GREEN}AmneziaWG obfuscation settings:${NC}"
-    echo "Junk coefficient (Jc): ${JC}"
-    echo "Minimum junk size (Jmin): ${JMIN}"
-    echo "Maximum junk size (Jmax): ${JMAX}"
-    echo "Init packet junk size (S1): ${S1}"
-    echo "Response packet junk size (S2): ${S2}"
-    echo "Magic header 1 (H1): ${H1}"
-    echo "Magic header 2 (H2): ${H2}"
-    echo "Magic header 3 (H3): ${H3}"
-    echo "Magic header 4 (H4): ${H4}"
-    echo "MTU: ${MTU}"
+     # --- Check if settings have changed before updating ---
+    if [[ "$JC" != "$orig_JC" || "$JMIN" != "$orig_JMIN" || "$JMAX" != "$orig_JMAX" ||
+          "$S1" != "$orig_S1" || "$S2" != "$orig_S2" || "$H1" != "$orig_H1" ||
+          "$H2" != "$orig_H2" || "$H3" != "$orig_H3" || "$H4" != "$orig_H4" ||
+          "$MTU" != "$orig_MTU" ]]; then
 
-    # Update server config
-    updateServerConfig
+        # Update server config.
+        updateServerConfig
 
-    # Ask if regenerate all client configs
-    read -rp "Regenerate all client configurations with these settings? [y/n]: " -i "y" REGEN_CLIENTS
-    echo ""
+        # Ask if regenerate all client configs.
+        read -rp "Regenerate all client configurations with these settings? [y/n]: " -i "y" REGEN_CLIENTS
+        echo ""
 
-    if [[ ${REGEN_CLIENTS} == 'y' ]]; then
-        regenerateAllClientConfigs
+        if [[ ${REGEN_CLIENTS} == 'y' ]]; then
+            regenerateAllClientConfigs
+        fi
+
+    else
+        echo -e "${ORANGE}No changes were made to the obfuscation settings.${NC}"
     fi
 }
 
 function updateServerConfig() {
     echo -e "${GREEN}Updating server configuration with new settings...${NC}"
 
-    # Update MTU in server config
-    sed -i "s/MTU = .*/MTU = ${MTU}/" /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    # Update MTU in server config.  Corrected spacing.
+    sed -i "s/MTU *= *.*/MTU = ${MTU}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
 
-    # Update obfuscation settings in server config
-    sed -i "s/Jc = .*/Jc = ${JC}/" /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf
-    sed -i "s/Jmin = .*/Jmin = ${JMIN}/" /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf
-    sed -i "s/Jmax = .*/Jmax = ${JMAX}/" /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf
-    sed -i "s/H1 = .*/H1 = ${H1}/" /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf
-    sed -i "s/H2 = .*/H2 = ${H2}/" /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf
-    sed -i "s/H3 = .*/H3 = ${H3}/" /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf
-    sed -i "s/H4 = .*/H4 = ${H4}/" /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    # Update obfuscation settings in server config. Corrected spacing.
+    sed -i "s/Jc *= *.*/Jc = ${JC}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    sed -i "s/Jmin *= *.*/Jmin = ${JMIN}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    sed -i "s/Jmax *= *.*/Jmax = ${JMAX}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    sed -i "s/H1 *= *.*/H1 = ${H1}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    sed -i "s/H2 *= *.*/H2 = ${H2}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    sed -i "s/H3 *= *.*/H3 = ${H3}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    sed -i "s/H4 *= *.*/H4 = ${H4}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
 
-    # Update ALLOWED_IPS in params
+    # Update ALLOWED_IPS in params (This part seems fine, leaving as is)
     sed -i "s/ALLOWED_IPS=.*/ALLOWED_IPS=${ALLOWED_IPS}/" /etc/amnezia/amneziawg/params
 
-    # Update JC, JMIN, JMAX, S1, S2, H1-4, MTU in params
+    # Update JC, JMIN, JMAX, S1, S2, H1-4, MTU in params (This part also seems fine)
     sed -i "s/JC=.*/JC=${JC}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "JC=${JC}" >> /etc/amnezia/amneziawg/params
     sed -i "s/JMIN=.*/JMIN=${JMIN}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "JMIN=${JMIN}" >> /etc/amnezia/amneziawg/params
     sed -i "s/JMAX=.*/JMAX=${JMAX}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "JMAX=${JMAX}" >> /etc/amnezia/amneziawg/params
@@ -1164,7 +1221,7 @@ function updateServerConfig() {
     sed -i "s/H3=.*/H3=${H3}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "H3=${H3}" >> /etc/amnezia/amneziawg/params
     sed -i "s/H4=.*/H4=${H4}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "H4=${H4}" >> /etc/amnezia/amneziawg/params
     sed -i "s/MTU=.*/MTU=${MTU}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "MTU=${MTU}" >> /etc/amnezia/amneziawg/params
-
+  
     # Restart AmneziaWG service to apply changes
     systemctl restart "awg-quick@${SERVER_WG_NIC}"
 
@@ -1261,9 +1318,27 @@ function uninstallWg() {
 }
 
 function configureAllowedIPs() {
-	echo ""
-	# Configure default traffic routing for new clients - using function
-	ROUTE_OPTION=$(getRoutingOption)
+
+    # Configure default traffic routing for new clients
+    echo ""
+    echo -e "${GREEN}Configure default traffic routing for new clients${NC}"  # Assuming GREEN and NC are defined
+    echo "1) Route all traffic (recommended)"
+    echo "2) Route specific websites only"
+    echo "3) Route websites blocked in Russia"
+
+    # --- Input Validation Loop ---
+    while true; do
+        read -rp "Select an option [1-3]: " -e -i "1" ROUTE_OPTION
+
+        # Check if the input is valid (1, 2, or 3)
+        if [[ "$ROUTE_OPTION" =~ ^[1-3]$ ]]; then
+            break  # Exit the loop if input is valid
+        else
+            echo "Invalid input.  Please enter 1, 2, or 3."
+            # No need to clear ROUTE_OPTION, -i will handle re-entry
+        fi
+    done
+    # --- End of Input Validation Loop ---
 
 	if [[ ${ROUTE_OPTION} == "2" ]]; then
 		startWebServer
@@ -1293,8 +1368,8 @@ function configureAllowedIPs() {
 	fi
 
 	# Save ALLOWED_IPS to a standalone file
-	echo "${ALLOWED_IPS}" > /etc/amnezia/amneziawg/default_routing.conf
-	echo -e "${GREEN}Default routing saved to /etc/amnezia/amneziawg/default_routing.conf${NC}"
+	echo "${ALLOWED_IPS}" > /etc/amnezia/amneziawg/default_routing
+	echo -e "${GREEN}Default routing saved to /etc/amnezia/amneziawg/default_routing${NC}"
 }
 
 function startWebServer() {
@@ -1432,23 +1507,25 @@ function installWebServerDependencies() {
     fi
 }
 
-function setupServer() {
-    echo -e "${GREEN}Setting up AmneziaWG server...${NC}"
+setupServer() {
+  echo -e "${GREEN}Setting up AmneziaWG server...${NC}"
 
-    # Read ALLOWED_IPS from default_routing.conf file
-    if [ -f "/etc/amnezia/amneziawg/default_routing.conf" ]; then
-        ALLOWED_IPS=$(cat /etc/amnezia/amneziawg/default_routing.conf)
-        echo -e "${GREEN}Using default routing from /etc/amnezia/amneziawg/default_routing.conf${NC}"
-    else
-        echo -e "${ORANGE}Default routing configuration file not found. Using 0.0.0.0/0 as default.${NC}"
-        ALLOWED_IPS="0.0.0.0/0" # Fallback if file is missing
-    fi
+  # --- 1. Determine ALLOWED_IPS ---
+  local allowed_ips_file="/etc/amnezia/amneziawg/default_routing"
+  if [ -f "$allowed_ips_file" ]; then
+    ALLOWED_IPS=$(cat "$allowed_ips_file")
+    echo -e "${GREEN}Using default routing from $allowed_ips_file${NC}"
+  else
+    echo -e "${ORANGE}Default routing configuration file not found. Using 0.0.0.0/0 as default.${NC}"
+    ALLOWED_IPS="0.0.0.0/0"  # Fallback
+  fi
 
-    # Debugging: Print ALLOWED_IPS before writing to params
-    echo "Debug: ALLOWED_IPS being saved to params: ${ALLOWED_IPS}"
+  # Debugging: Print ALLOWED_IPS (good practice)
+  echo "Debug: ALLOWED_IPS being saved to params: ${ALLOWED_IPS}"
 
-    # Create server params file
-    echo "SERVER_PUB_IP=${SERVER_PUB_IP}
+  # --- 2. Create server params file ---
+  cat > /etc/amnezia/amneziawg/params <<EOF
+SERVER_PUB_IP=${SERVER_PUB_IP}
 SERVER_PUB_NIC=${SERVER_PUB_NIC}
 SERVER_WG_NIC=${SERVER_WG_NIC}
 SERVER_WG_IPV4=${SERVER_WG_IPV4}
@@ -1470,34 +1547,20 @@ H2=${H2}
 H3=${H3}
 H4=${H4}
 MTU=${MTU}
-ALLOWED_IPS=${ALLOWED_IPS}" > /etc/amnezia/amneziawg/params
+ALLOWED_IPS=${ALLOWED_IPS}
+EOF
 
-    # Enable IP forwarding
-    echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/awg.conf
+  # --- 3. Enable IP forwarding ---
+  echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/awg.conf
+  if [[ ${ENABLE_IPV6} == 'y' ]]; then
+    echo "net.ipv6.conf.all.forwarding = 1" >> /etc/sysctl.d/awg.conf
+  fi
+  sysctl --system
 
-    if [[ ${ENABLE_IPV6} == 'y' ]]; then
-        echo "net.ipv6.conf.all.forwarding = 1" >> /etc/sysctl.d/awg.conf
-    fi
-    sysctl --system
-
-    # Configure the server interface
-    if [[ ${ENABLE_IPV6} == 'y' ]]; then
-        # Create config with both IPv4 and IPv6
-        echo "[Interface]
-Address = ${SERVER_WG_IPV4}/24,${SERVER_WG_IPV6}/64
-ListenPort = ${SERVER_PORT}
-PrivateKey = ${SERVER_PRIV_KEY}
-Jc = ${JC}
-Jmin = ${JMIN}
-Jmax = ${JMAX}
-H1 = ${H1}
-H2 = ${H2}
-H3 = ${H3}
-H4 = ${H4}
-MTU = ${MTU}" > /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf
-    else
-        # IPv4 only config
-        echo "[Interface]
+  # --- 4. Configure the server interface ---
+  local interface_config_file="/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+  cat > "$interface_config_file" <<EOF
+[Interface]
 Address = ${SERVER_WG_IPV4}/24
 ListenPort = ${SERVER_PORT}
 PrivateKey = ${SERVER_PRIV_KEY}
@@ -1508,56 +1571,78 @@ H1 = ${H1}
 H2 = ${H2}
 H3 = ${H3}
 H4 = ${H4}
-MTU = ${MTU}" > /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf
-    fi
+MTU = ${MTU}
+EOF
 
-    # Add firewall rules
-    if pgrep firewalld; then
-        FIREWALLD_IPV4_ADDRESS=$(echo "${SERVER_WG_IPV4}" | cut -d"." -f1-3)".0"
-        FIREWALLD_IPV6_ADDRESS=$(echo "${SERVER_WG_IPV6}" | sed 's/:[^:]*$/:0/')
-        echo "PostUp = firewall-cmd --zone=public --add-interface=${SERVER_WG_NIC}
+  if [[ ${ENABLE_IPV6} == 'y' ]]; then
+     echo "Address = ${SERVER_WG_IPV6}/64" >> "$interface_config_file"
+  fi
+
+  # --- 5. Configure Firewall Rules ---
+  # Check for firewalld first, then fall back to iptables.  More robust.
+  if command -v firewall-cmd &> /dev/null; then
+    # firewalld is available
+    FIREWALLD_IPV4_ADDRESS=$(echo "${SERVER_WG_IPV4}" | cut -d"." -f1-3)".0"
+    cat >> "$interface_config_file" <<EOF
+PostUp = firewall-cmd --zone=public --add-interface=${SERVER_WG_NIC}
 PostUp = firewall-cmd --add-port ${SERVER_PORT}/udp
 PostUp = firewall-cmd --add-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade'
 PostDown = firewall-cmd --zone=public --remove-interface=${SERVER_WG_NIC}
 PostDown = firewall-cmd --remove-port ${SERVER_PORT}/udp
-PostDown = firewall-cmd --remove-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade'" >> /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
-        if [[ ${ENABLE_IPV6} == 'y' ]]; then
-            echo "PostUp = firewall-cmd --add-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS}/64 masquerade'
-PostDown = firewall-cmd --remove-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS}/64 masquerade'" >> /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
-        fi
-    else
-        echo "PostUp = iptables -I INPUT -p udp --dport ${SERVER_PORT} -j ACCEPT
+PostDown = firewall-cmd --remove-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade'
+EOF
+
+    if [[ ${ENABLE_IPV6} == 'y' ]]; then
+      FIREWALLD_IPV6_ADDRESS=$(echo "${SERVER_WG_IPV6}" | sed 's/:[^:]*$/:0/')
+      cat >> "$interface_config_file" <<EOF
+PostUp = firewall-cmd --add-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS}/64 masquerade'
+PostDown = firewall-cmd --remove-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS}/64 masquerade'
+EOF
+    fi
+
+  elif command -v iptables &> /dev/null; then  #check if iptables exist
+    # iptables is available
+   cat >> "$interface_config_file" <<EOF
+PostUp = iptables -I INPUT -p udp --dport ${SERVER_PORT} -j ACCEPT
 PostUp = iptables -I FORWARD -i ${SERVER_PUB_NIC} -o ${SERVER_WG_NIC} -j ACCEPT
 PostUp = iptables -I FORWARD -i ${SERVER_WG_NIC} -j ACCEPT
 PostUp = iptables -t nat -A POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
 PostDown = iptables -D INPUT -p udp --dport ${SERVER_PORT} -j ACCEPT
 PostDown = iptables -D FORWARD -i ${SERVER_PUB_NIC} -o ${SERVER_WG_NIC} -j ACCEPT
 PostDown = iptables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT
-PostDown = iptables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE" >> /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
-        if [[ ${ENABLE_IPV6} == 'y' ]]; then
-            echo "PostUp = ip6tables -I FORWARD -i ${SERVER_WG_NIC} -j ACCEPT
+PostDown = iptables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
+EOF
+
+    if [[ ${ENABLE_IPV6} == 'y' ]]; then
+        cat >> "$interface_config_file" <<EOF
+PostUp = ip6tables -I FORWARD -i ${SERVER_WG_NIC} -j ACCEPT
 PostUp = ip6tables -t nat -A POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
 PostDown = ip6tables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT
-PostDown = ip6tables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE" >> /etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
-        fi
+PostDown = ip6tables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
+EOF
     fi
+  else
+      echo -e "${RED}Error: Neither firewalld nor iptables found.  Cannot configure firewall.${NC}"
+      exit 1  # Exit with an error code
+  fi
 
-    # Enable and start AmneziaWG service
-    systemctl start "awg-quick@${SERVER_WG_NIC}"
-    systemctl enable "awg-quick@${SERVER_WG_NIC}"
+  # --- 6. Enable and start AmneziaWG service ---
+  systemctl start "awg-quick@${SERVER_WG_NIC}"
+  systemctl enable "awg-quick@${SERVER_WG_NIC}"
 
-    # Verify service is running
-    if systemctl is-active --quiet "awg-quick@${SERVER_WG_NIC}"; then
-        echo -e "${GREEN}AmneziaWG service is running.${NC}"
-    else
-        echo -e "${RED}AmneziaWG service failed to start. Try running 'systemctl start awg-quick@${SERVER_WG_NIC}' manually.${NC}"
-    fi
+  # --- 7. Verify service status ---
+  if systemctl is-active --quiet "awg-quick@${SERVER_WG_NIC}"; then
+    echo -e "${GREEN}AmneziaWG service is running.${NC}"
+  else
+    echo -e "${RED}AmneziaWG service failed to start.  Try running 'systemctl start awg-quick@${SERVER_WG_NIC}' manually.${NC}"
+  fi
 
-    # Create a new client
-    newClient
+  # --- 8. Call newClient (assuming it's defined elsewhere) ---
+  newClient
 
-    echo -e "${GREEN}AmneziaWG installation completed!${NC}"
-    echo -e "${GREEN}You can add more clients using:${NC} $0"
+  # --- 9. Completion message ---
+  echo -e "${GREEN}AmneziaWG installation completed!${NC}"
+  echo -e "${GREEN}You can add more clients using:${NC} $0"
 }
 
 function installAmneziaWG() {
@@ -1581,7 +1666,7 @@ function installAmneziaWG() {
         apt-get update
         apt-get install -y software-properties-common python3-launchpadlib gnupg2 linux-headers-$(uname -r)
 
-        add-apt-repository ppa:amnezia/ppa
+        add-apt-repository -y ppa:amnezia/ppa
         apt-get install -y amneziawg
         
     elif [[ ${OS} == "rhel" ]]; then
@@ -1598,65 +1683,69 @@ function installAmneziaWG() {
 }
 
 function manageMenu() {
-    echo ""
-    echo "╔═══════════════════════════════════════════════╗"
-    echo "║           AmneziaWG Management Panel          ║"
-    echo "╚═══════════════════════════════════════════════╝"
-    echo ""
-    echo "Welcome to AmneziaWG management menu"
-    echo ""
-    echo "What do you want to do?"
-    echo "   1) Add a new client"
-    echo "   2) List existing clients"
-    echo "   3) Revoke a client"
-    echo "   4) Configure obfuscation settings"
-    echo "   5) Configure traffic routing"
-    echo "   6) Uninstall AmneziaWG"
-    echo "   7) Exit"
-    echo ""
+    local MENU_OPTION  # Good practice: make MENU_OPTION local
 
-    until [[ ${MENU_OPTION} =~ ^[1-7]$ ]]; do
-        read -rp "Select an option [1-7]: " MENU_OPTION
-    done
-
-    case "${MENU_OPTION}" in
-    1)
-        newClient
-        ;;
-    2)
-        listClients
-        ;;
-    3)
-        revokeClient
-        ;;
-    4)
-        configureObfuscationSettings
-        ;;
-    5)
-        configureAllowedIPs
-        # Update server config
-        updateServerConfig
-
-        # Ask if regenerate all client configs
-        read -rp "Regenerate all client configurations with these settings? [y/n]: " -i "y" REGEN_CLIENTS
+    while true; do  # Loop forever (until we explicitly exit)
+        echo ""
+        echo "╔═══════════════════════════════════════════════╗"
+        echo "║           AmneziaWG Management Panel          ║"
+        echo "╚═══════════════════════════════════════════════╝"
+        echo ""
+        echo "Welcome to AmneziaWG management menu"
+        echo ""
+        echo "What do you want to do?"
+        echo "   1) Add a new client"
+        echo "   2) List existing clients"
+        echo "   3) Revoke a client"
+        echo "   4) Configure obfuscation settings"
+        echo "   5) Configure traffic routing"
+        echo "   6) Uninstall AmneziaWG"
+        echo "   7) Exit"
         echo ""
 
-        if [[ ${REGEN_CLIENTS} == 'y' ]]; then
-            regenerateAllClientConfigs
-        fi
-        ;;
-    6)
-        uninstallWg
-        ;;
-    7)
-        exit 0
-        ;;
-    esac
+        MENU_OPTION=""  # Reset MENU_OPTION each time
+        until [[ ${MENU_OPTION} =~ ^[1-7]$ ]]; do
+            read -rp "Select an option [1-7]: " MENU_OPTION
+        done
 
-    echo ""
-    read -n1 -r -p "Press any key to return to the menu..."
-    echo ""
-    manageMenu
+        case "${MENU_OPTION}" in
+        1)
+            newClient
+            ;;
+        2)
+            listClients
+            ;;
+        3)
+            revokeClient
+            ;;
+        4)
+            configureObfuscationSettings
+            ;;
+        5)
+             configureAllowedIPs
+             # Update server config
+             updateServerConfig
+       
+             # Ask if regenerate all client configs
+             read -rp "Regenerate all client configurations with these settings? [y/n]: " -i "y" REGEN_CLIENTS
+             echo ""
+       
+             if [[ ${REGEN_CLIENTS} == 'y' ]]; then
+                 regenerateAllClientConfigs
+             fi
+            ;;
+        6)
+            uninstallWg
+            ;;
+        7)
+            return 0  # Exit the function (and the loop)
+            ;;
+        esac
+
+        echo ""
+        read -n1 -r -p "Press any key to continue..."
+        echo ""  # Add an extra newline for better spacing
+    done
 }
 
 # Check for root, virt, OS...

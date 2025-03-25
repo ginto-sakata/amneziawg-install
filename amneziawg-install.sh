@@ -487,15 +487,27 @@ function initialCheck() {
 }
 
 function getRoutingOption() {
-    echo "Debug: Entering getRoutingOption function"  # Debugging line
+    echo "Debug: Entering getRoutingOption function"  # Debugging entry point
 
+    echo "Debug: Printing newline"
     echo ""
+
+    echo "Debug: Printing header line with color codes"
     echo -e "${GREEN}Configure default traffic routing for new clients${NC}"
+
+    echo "Debug: Printing option 1"
     echo "1) Route all traffic (recommended)"
+
+    echo "Debug: Printing option 2"
     echo "2) Route specific websites only"
+
+    echo "Debug: Printing option 3"
     echo "3) Route websites blocked in Russia"
+
+    echo "Debug: Printing read prompt"
     read -rp "Select an option [1-3]: " ROUTE_OPTION
 
+    echo "Debug: Selected ROUTE_OPTION is: '$ROUTE_OPTION'" # Debugging output of ROUTE_OPTION
     echo "$ROUTE_OPTION" # Output the selected option
 }
 

@@ -42,8 +42,8 @@ RESET_COLOR="\033[0m"
 BOLD_GREEN="\033[1;32m"
 BOLD_CYAN="\033[1;36m"
 
-# Process service categories and services - Simple Scrolling Log Output
-echo "Processing service categories - SIMPLE SCROLLING LOG OUTPUT..."
+# Process service categories and services
+echo "Processing service categories..."
 
 # Process each service file in the config directory - now iterating by category and service from directories
 for category_name in "${SERVICE_CATEGORIES_ARRAY[@]}"; do

@@ -1404,64 +1404,44 @@ function startWebServer() {
     # Make the script executable
     chmod +x "${AWG_INSTALL_TEMP_DIR}/generate_data.sh"
     
-    # Generate the cidrs.json file
+# Generate the cidrs.json file
     echo "Generating CIDR data..."
     "${AWG_INSTALL_TEMP_DIR}/generate_data.sh" "${IPLIST_DIR}/config" "${WEBSITE_DIR}"
-    
-    # Create a simple web server using Python or PHP
+
+    # Create a simple web server using Python 3
     echo -e "${GREEN}Starting web server...${NC}"
-    
+
     # Try to get server's domain name, fallback to IP if not available
     WEBSERVER_ADDRESS=$(hostname -f 2>/dev/null || hostname)
     if [ -z "$WEBSERVER_ADDRESS" ] || [ "$WEBSERVER_ADDRESS" = "localhost" ]; then
         WEBSERVER_ADDRESS=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v 127.0.0.1 | head -1)
     fi
-    
+
     WEBSERVER_ADDRESS=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v 127.0.0.1 | head -1)
-    
+
     # Choose a port
     WEB_PORT=8080
-    
+
     # Check if python3 is available
     if command -v python3 &> /dev/null; then
         echo -e "${GREEN}Starting web server using Python 3 at http://${WEBSERVER_ADDRESS}:${WEB_PORT}${NC}"
         echo -e "${GREEN}Please open this URL in your browser.${NC}"
         echo -e "${GREEN}After selecting services, click 'Generate IP List' and copy the result.${NC}"
         echo -e "${ORANGE}Press Ctrl+C when done to continue with the installation.${NC}"
-        
+
         # Change to the website directory and start the server
         cd "${WEBSITE_DIR}"
-        python3 -m http.server ${WEB_PORT}
-    # Check if python2 is available
-    elif command -v python &> /dev/null; then
-        echo -e "${GREEN}Starting web server using Python 2 at${NC} http://${WEBSERVER_ADDRESS}:${WEB_PORT}"
-        echo -e "${GREEN}Please open this URL in your browser.${NC}"
-        echo -e "${GREEN}After selecting services, click 'Generate IP List' and copy the result.${NC}"
-        echo -e "${ORANGE}Press Ctrl+C when done to continue with the installation.${NC}"
-        
-        # Change to the website directory and start the server
-        cd "${WEBSITE_DIR}"
-        python -m SimpleHTTPServer ${WEB_PORT}
-    # Check if PHP is available
-    elif command -v php &> /dev/null; then
-        echo -e "${GREEN}Starting web server using PHP at http://${WEBSERVER_ADDRESS}:${WEB_PORT}${NC}"
-        echo -e "${GREEN}Please open this URL in your browser.${NC}"
-        echo -e "${GREEN}After selecting services, click 'Generate IP List' and copy the result.${NC}"
-        echo -e "${ORANGE}Press Ctrl+C when done to continue with the installation.${NC}"
-        
-        # Change to the website directory and start the server
-        cd "${WEBSITE_DIR}"
-        php -S 0.0.0.0:${WEB_PORT}
+        python3 -m http.server ${WEB_PORT} > /dev/null 2>&1 # Suppress "Serving HTTP..."
     else
-        echo -e "${RED}Could not start a web server. Please install Python or PHP.${NC}"
+        echo -e "${RED}Could not start a web server using Python 3. Please install Python 3.${NC}"
         echo -e "${RED}Continuing with default routing (all traffic).${NC}"
         ALLOWED_IPS="0.0.0.0/0"
-        
+
         # Clean up
         rm -rf "${TEMP_DIR}"
         return 1
     fi
-    
+
     # Clean up
     rm -rf "${TEMP_DIR}"
 }

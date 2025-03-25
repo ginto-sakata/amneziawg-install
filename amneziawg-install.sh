@@ -591,7 +591,7 @@ function installQuestions() {
 	echo "1) Route all traffic (recommended)"
 	echo "2) Route specific websites only"
     echo "3) Route websites blocked in Russia"
-	read -rp "Select an option [1-3]: " ROUTE_OPTION
+	read -rp "Select an option [1-3]: " -e ROUTE_OPTION
 	
 	if [[ ${ROUTE_OPTION} == "2" ]]; then
 		startWebServer

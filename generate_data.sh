@@ -7,14 +7,6 @@ SERVICES_FILE="${3:-./static_website/services.json}"
 
 echo "Generating data from $CONFIG_DIR to $OUTPUT_DIR..."
 
-# First, ensure we have the iplist repository
-echo "Ensuring iplist repository is available..."
-chmod +x clone_iplist.sh
-./clone_iplist.sh
-
-# Ensure output directory exists
-mkdir -p "$OUTPUT_DIR"
-
 # Check if required files exist
 if [ ! -f "$SERVICES_FILE" ]; then
     echo "Error: services.json not found"

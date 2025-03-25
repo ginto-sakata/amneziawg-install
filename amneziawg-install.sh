@@ -233,7 +233,7 @@ function migrateWireGuard() {
         else
             echo -e "${ORANGE}Generating new key pair for AmneziaWG server...${NC}"
             SERVER_PRIV_KEY=$(wg genkey)
-            SERVER_PUB_KEY=$(echo "${SERVER_PRIV_KEY}" | wg pubkey)
+            SERVER_PUB_KEY=$(echo "${SERVER_PUB_KEY}" | wg pubkey)
             echo -e "${ORANGE}New clients will need updated server public key: ${SERVER_PUB_KEY}${NC}"
         fi
 
@@ -742,7 +742,7 @@ function manageMenu() {
     7)
         exit 0
         ;;
-    esac # --- MISSING 'esac' WAS HERE ---
+    esac # Corrected: Added missing 'esac' here
 
     echo ""
     read -n1 -r -p "Press any key to return to the menu..."
@@ -750,28 +750,94 @@ function manageMenu() {
     manageMenu
 }
 
-# Check for root, virt, OS...
-initialCheck
+function installWebServerDependencies() {
+    echo -e "${GREEN}Checking and installing necessary packages...${NC}"
 
-# Check if AmneziaWG is already installed and load params
-if [[ -e /etc/amnezia/amneziawg/params ]]; then
-	source /etc/amnezia/amneziawg/params
-	manageMenu
-else
-	installAmneziaWG # Corrected function call here
-fi
+    MISSING_PACKAGES=""
 
-# Add error handling function
-handle_error() {
-    local exit_code=$?
-    echo "Error occurred in script at line: ${BASH_LINENO[0]}"
-    # Cleanup if needed
-    exit $exit_code
+    # Check for unzip
+    if ! command -v unzip &> /dev/null; then
+        MISSING_PACKAGES="${MISSING_PACKAGES} unzip"
+    fi
+
+    # Check for curl or wget
+    if ! command -v curl &> /dev/null && ! command -v wget &> /dev/null; then
+        if [[ ${OS} == "ubuntu" || ${OS} == "debian" ]]; then
+            MISSING_PACKAGES="${MISSING_PACKAGES} curl"
+        else
+            MISSING_PACKAGES="${MISSING_PACKAGES} wget"
+        fi
+    fi
+
+    # Check for Python or PHP
+    if ! command -v python3 &> /dev/null && ! command -v python &> /dev/null && ! command -v php &> /dev/null; then
+        if [[ ${OS} == "ubuntu" || ${OS} == "debian" ]]; then
+            MISSING_PACKAGES="${MISSING_PACKAGES} python3"
+        else
+            MISSING_PACKAGES="${MISSING_PACKAGES} python3"
+        fi
+    fi
+
+    # Install missing packages if any
+    if [[ ! -z "${MISSING_PACKAGES}" ]]; then
+        echo -e "${GREEN}Installing missing packages: ${MISSING_PACKAGES}${NC}"
+
+        if [[ ${OS} == "ubuntu" || ${OS} == "debian" ]]; then
+            apt-get update
+            apt-get install -y ${MISSING_PACKAGES}
+        elif [[ ${OS} == "rhel" ]]; then
+            if [[ ${OS} == "fedora" ]]; then
+                dnf install -y ${MISSING_PACKAGES}
+            else
+                yum install -y ${MISSING_PACKAGES}
+            fi
+        fi
+    else
+        echo -e "${GREEN}All required packages are already installed.${NC}"
+    fi
 }
-trap 'handle_error' ERR
 
-# Fix for potential syntax errors
-set +e  # Continue execution even if there's an error
+function installAmneziaWG() {
+    # Start with welcome screen
+    installQuestions
+
+    echo ""
+    echo "╔═══════════════════════════════════════════════╗"
+    echo "║        AmneziaWG Installation Process         ║"
+    echo "╚═══════════════════════════════════════════════╝"
+    echo ""
+
+    # Create necessary directories
+    mkdir -p /etc/amnezia/amneziawg
+    chmod 700 /etc/amnezia/amneziawg
+
+    # Install dependencies
+    echo -e "${GREEN}Installing required dependencies...${NC}"
+    if [[ ${OS} == "ubuntu" || ${OS} == "debian" ]]; then
+        setupDebSrc
+        apt-get update
+        apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release software-properties-common
+
+        # Add Amnezia repositories
+        echo -e "${GREEN}Adding AmneziaWG repository...${NC}"
+        curl -fsSL https://dl.amnezia.org/key.pub | gpg --dearmor -o /usr/share/keyrings/amnezia-archive-keyring.gpg
+        echo "deb [signed-by=/usr/share/keyrings/amnezia-archive-keyring.gpg] https://dl.amnezia.org/apt stable main" > /etc/apt/sources.list.d/amnezia.list
+
+        # Update and install AmneziaWG
+        apt-get update
+        apt-get install -y amneziawg
+    elif [[ ${OS} == "rhel" ]]; then
+        installAmneziaWGRHEL
+    fi
+
+    # Generate server key pair
+    echo -e "${GREEN}Generating AmneziaWG server keys...${NC}"
+    SERVER_PRIV_KEY=$(awg genkey)
+    SERVER_PUB_KEY=$(echo "${SERVER_PRIV_KEY}" | awg pubkey)
+
+    # Run setupServer to configure the server
+    setupServer
+}
 
 function setupServer() {
     echo -e "${GREEN}Setting up AmneziaWG server...${NC}"

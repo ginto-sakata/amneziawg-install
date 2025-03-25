@@ -487,17 +487,13 @@ function initialCheck() {
 }
 
 function getRoutingOption() {
-    echo "Entering getRoutingOption function (DEBUG - PLAIN TEXT)" # Debugging entry point
-
     echo ""
-    echo "Configure default traffic routing for new clients (PLAIN TEXT MENU)" # Plain text header
-    echo "1) Route all traffic (recommended)" # Plain text option 1
-    echo "2) Route specific websites only" # Plain text option 2
-    echo "3) Route websites blocked in Russia" # Plain text option 3
+    echo -e "${GREEN}Configure default traffic routing for new clients${NC}"
+    echo "1) Route all traffic (recommended)"
+    echo "2) Route specific websites only"
+    echo "3) Route websites blocked in Russia"
     read -rp "Select an option [1-3]: " ROUTE_OPTION
-
-    echo "Selected ROUTE_OPTION is: '$ROUTE_OPTION' (PLAIN TEXT DEBUG)" # Plain text debug output
-    echo "$ROUTE_OPTION" # Output the selected option
+    echo "$ROUTE_OPTION"
 }
 
 function installQuestions() {
@@ -614,7 +610,12 @@ function installQuestions() {
 
 
 	# Configure default traffic routing for new clients - using function
-	ROUTE_OPTION=$(getRoutingOption)
+	echo ""
+	echo -e "${GREEN}Configure default traffic routing for new clients${NC}"
+	echo "1) Route all traffic (recommended)"
+	echo "2) Route specific websites only"
+    echo "3) Route websites blocked in Russia"
+	read -rp "Select an option [1-3]: " ROUTE_OPTION
 
 	if [[ ${ROUTE_OPTION} == "2" ]]; then
 		startWebServer

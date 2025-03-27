@@ -92,10 +92,9 @@ If you choose "Route only specific websites/services" during setup or via the ma
 3.  A temporary web server will start. The script will show you the URL (e.g., `http://YOUR_SERVER_IP:8080`).
 4.  **Open the URL in your browser.**
 5.  Select the desired services using the checkboxes.
-6.  Click **"Generate IP List"** at the bottom.
-7.  **Copy** the generated comma-separated list of CIDRs.
-8.  **Paste** the list into the terminal where the script is waiting.
-9.  Press **Ctrl+C** in the terminal to stop the web server and continue the script.
+6.  Click **"Copy IP List"** at the top right.
+7.  Press **Ctrl+C** in the terminal to stop the web server and continue the script.
+8.  **Paste** the list into the terminal and continue the script.
 
 ## Migration from WireGuard
 

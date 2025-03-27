@@ -42,10 +42,10 @@ JMIN=40
 JMAX=70
 S1=50
 S2=100
-H1=$((RANDOM * 100000 + 10000))
-H2=$((RANDOM * 100000 + 20000))
-H3=$((RANDOM * 100000 + 30000))
-H4=$((RANDOM * 100000 + 40000))
+H1=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 10000))
+H2=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 20000))
+H3=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 30000))
+H4=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 40000))
 MTU=1280
 # Params file location
 PARAMS_FILE="/etc/amnezia/amneziawg/params"
@@ -298,41 +298,62 @@ function getHomeDirForClient() {
 }
 
 function detectExistingWireGuard() {
-    if [[ -d "${WG_CONF_DIR}" ]] && find "${WG_CONF_DIR}" -maxdepth 1 -name "*.conf" -print -quit | grep -q .; then
-        print_header "Existing WireGuard Detected"
-        echo -e "${ORANGE}WireGuard configuration files found in ${WG_CONF_DIR}.${NC}"
-        echo ""
+    if [[ -f "${PARAMS_FILE}" ]]; then
+        # AmneziaWG already installed, proceed to manage menu
+        return 0 # Indicates existing install
+    fi
 
-        local wg_type="standard" # Assume standard by default
-        if [[ -f "${WG_CONF_DIR}/params" ]]; then
-            echo -e "${GREEN}Detected WireGuard possibly installed using the 'angristan/wireguard-install' script.${NC}"
-            wg_type="script"
-        else
-            echo -e "${GREEN}Detected standard WireGuard installation.${NC}"
+    # Check if WG dir exists and if we can access it BEFORE trying find
+    if [[ -d "${WG_CONF_DIR}" ]]; then
+        if [[ ! -r "${WG_CONF_DIR}" || ! -x "${WG_CONF_DIR}" ]]; then
+            # Directory exists but we can't read/execute it
+            echo -e "${RED}Error: Cannot access WireGuard directory: ${WG_CONF_DIR}${NC}"
+            echo -e "${RED}Check directory permissions (${ORANGE}ls -ld ${WG_CONF_DIR}${NC}).${NC}"
+            echo -e "${RED}SELinux/AppArmor might also be blocking access.${NC}"
+            exit 1
         fi
 
-        echo -e "${RED}AmneziaWG installation will attempt to migrate your existing WireGuard setup.${NC}"
-        echo "- Existing WireGuard services will be stopped and disabled."
-        echo "- Server settings (IPs, Port, Server Private Key) will be reused to maintain server identity."
-        echo "- Client authorization (public keys) will be migrated to the new server config."
-        echo -e "- ${ORANGE}NEW client config files (with AmneziaWG obfuscation settings) will be generated in ~/amneziawg/.${NC}"
-        echo -e "- ${ORANGE}These NEW config files MUST be distributed to clients to enable obfuscation.${NC}"
-        echo -e "- ${ORANGE}Existing client config files MAY still work for basic connectivity (without obfuscation), but using the new files is recommended.${NC}"
-        echo "- Old WireGuard config files (`/etc/wireguard/*.conf`) will remain as backups but the service will be inactive."
-        echo ""
-        read -rp "Do you want to proceed with migration? [y/n]: " -e -i "y" CONFIRM
-        if [[ ${CONFIRM,,} == 'y' ]]; then
-            migrateWireGuard "${wg_type}" # Pass detected type
-            # If migration is successful, exit the script? Or continue to management menu?
-            echo -e "${GREEN}Migration completed. Please manage your AmneziaWG server using this script later.${NC}"
-            exit 0 # Exit after successful migration
-        else
-            echo "Installation cancelled."
-                exit 0
+        # Directory exists and is accessible, now check for conf files
+        if find "${WG_CONF_DIR}" -maxdepth 1 -name "*.conf" -print -quit | grep -q .; then
+            print_header "Existing WireGuard Detected"
+            echo -e "${ORANGE}WireGuard configuration files found in ${WG_CONF_DIR}.${NC}"
+            echo ""
+
+            local wg_type="standard" # Assume standard by default
+            if [[ -f "${WG_CONF_DIR}/params" ]]; then
+                echo -e "${GREEN}Detected WireGuard possibly installed using the 'angristan/wireguard-install' script.${NC}"
+                wg_type="script"
+            else
+                echo -e "${GREEN}Detected standard WireGuard installation.${NC}"
+            fi
+
+            echo -e "${RED}AmneziaWG installation will attempt to migrate your existing WireGuard setup.${NC}"
+            echo "- Existing WireGuard services will be stopped and disabled."
+            echo "- Server settings (IPs, Port, Server Private Key) will be reused to maintain server identity."
+            echo "- Client authorization (public keys) will be migrated to the new server config."
+            echo -e "- ${ORANGE}NEW client config files (with AmneziaWG obfuscation settings) will be generated in ~/amneziawg/.${NC}"
+            echo -e "- ${ORANGE}These NEW config files MUST be distributed to clients to enable obfuscation.${NC}"
+            echo -e "- ${ORANGE}Existing client config files MAY still work for basic connectivity (without obfuscation), but using the new files is recommended.${NC}"
+            echo "- Old WireGuard config files (`/etc/wireguard/*.conf`) will remain as backups but the service will be inactive."
+            echo ""
+            read -rp "Do you want to proceed with migration? [y/n]: " -e -i "y" CONFIRM
+            if [[ ${CONFIRM,,} == 'y' ]]; then
+                migrateWireGuard "${wg_type}" # Pass detected type
+                # If migration is successful, exit the script? Or continue to management menu?
+                echo -e "${GREEN}Migration completed. Please manage your AmneziaWG server using this script later.${NC}"
+                exit 0 # Exit after successful migration
+            else
+                echo "Installation cancelled."
+                    exit 0
+            fi
         fi
-    elif dpkg-query -W -f='${Status}' wireguard 2>/dev/null | grep -q "ok installed" || \
+    fi
+
+    # No Amnezia params and no WG conf files found (or dir inaccessible)
+    # Check if package installed but no config
+    if dpkg-query -W -f='${Status}' wireguard 2>/dev/null | grep -q "ok installed" || \
          (command -v rpm &>/dev/null && rpm -q wireguard-tools &>/dev/null); then
-        echo -e "${ORANGE}WireGuard package (or tools) is installed but no *.conf files found in ${WG_CONF_DIR}.${NC}"
+        echo -e "${ORANGE}WireGuard package (or tools) is installed but no *.conf files found or accessible in ${WG_CONF_DIR}.${NC}"
         echo -e "${GREEN}Attempting to remove WireGuard packages before installing AmneziaWG...${NC}"
 
         if [[ ${OS} == "ubuntu" || ${OS} == "debian" ]]; then
@@ -346,7 +367,7 @@ function detectExistingWireGuard() {
 
         echo -e "${GREEN}WireGuard packages removed (if found). Proceeding with AmneziaWG installation...${NC}"
     else
-        echo -e "${GREEN}No existing WireGuard installation detected.${NC}"
+        echo -e "${GREEN}No existing WireGuard or AmneziaWG installation detected.${NC}"
     fi
 }
 
@@ -358,27 +379,50 @@ function migrateWireGuard() {
     # Find the primary WireGuard interface config file
     # Heuristic: find first .conf file
     local wg_conf_file=""
+    # Use find again, check return status
     wg_conf_file=$(find "${WG_CONF_DIR}" -maxdepth 1 -name "*.conf" -print -quit)
-
     if [[ -z "${wg_conf_file}" ]]; then
         echo -e "${RED}No WireGuard configuration file (*.conf) found in ${WG_CONF_DIR}. Cannot migrate.${NC}"
+        # This check should be redundant due to detectExistingWireGuard, but safety first.
         exit 1
     fi
+
 
     local wg_interface_name=""
     wg_interface_name=$(basename "${wg_conf_file}" .conf)
     echo -e "${GREEN}Found WireGuard interface: ${wg_interface_name}${NC}"
+    echo -e "${GREEN}Using configuration file: ${wg_conf_file}${NC}"
+
+    # --- Explicit Permission Check on the file ---
+    if [[ ! -r "${wg_conf_file}" ]]; then
+        echo -e "${RED}Error: Cannot read the configuration file: ${wg_conf_file}${NC}"
+        echo -e "${RED}Check file permissions and SELinux/AppArmor logs (ausearch, dmesg).${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}Read permissions confirmed for ${wg_conf_file}.${NC}"
+
 
     # --- Extract Settings from Old Config ---
-    # Use wg-quick strip for cleaner parsing
+    # Try wg-quick strip first
     local stripped_config=""
-    if ! stripped_config=$(wg-quick strip "${wg_interface_name}" 2>/dev/null); then
-        echo -e "${ORANGE}Warning: Failed to strip configuration using 'wg-quick strip ${wg_interface_name}'. Reading file directly.${NC}"
+    echo -e "${GREEN}Attempting to parse config using 'wg-quick strip'...${NC}"
+    if ! stripped_config=$(wg-quick strip "${wg_interface_name}" 2> "${AWG_CONF_DIR}/wg-quick-strip.err"); then
+        echo -e "${ORANGE}Warning: 'wg-quick strip ${wg_interface_name}' failed. Reading file directly.${NC}"
+        if [[ -s "${AWG_CONF_DIR}/wg-quick-strip.err" ]]; then
+             echo -e "${ORANGE}wg-quick strip error output:"
+             cat "${AWG_CONF_DIR}/wg-quick-strip.err"
+             echo -e "${NC}"
+        fi
         # Fallback to reading file if strip fails
         if ! stripped_config=$(cat "${wg_conf_file}"); then
-             echo -e "${RED}Failed to read configuration file: ${wg_conf_file}${NC}"
+             echo -e "${RED}Fallback failed: Cannot read configuration file: ${wg_conf_file}${NC}"
+             echo -e "${RED}This is unexpected as read permissions were checked. Check system logs.${NC}"
              exit 1
         fi
+        echo -e "${GREEN}Successfully read config file directly.${NC}"
+    else
+         echo -e "${GREEN}Successfully parsed config using 'wg-quick strip'.${NC}"
+         rm -f "${AWG_CONF_DIR}/wg-quick-strip.err" # Clean up error file if successful
     fi
 
     # Extract Interface settings using improved method
@@ -390,13 +434,15 @@ function migrateWireGuard() {
     # Validate extracted mandatory settings
     # Check if at least one IP (v4 or v6) and the port were found
     if [[ (-z "${SERVER_WG_IPV4}" && -z "${SERVER_WG_IPV6}") || -z "${SERVER_PORT}" ]]; then
-        echo -e "${RED}Could not reliably extract server IP address (IPv4 or IPv6) or ListenPort from ${wg_conf_file}.${NC}"
-        echo -e "${RED}Stripped Config Content:\n${stripped_config}${NC}" # Debug output
+        echo -e "${RED}Could not reliably extract server IP address (IPv4 or IPv6) or ListenPort from parsed config.${NC}"
+        echo -e "${ORANGE}--- Parsed Config Content ---${NC}" # Debug output
+        echo "${stripped_config}"
+        echo -e "${ORANGE}--- End Parsed Config ---${NC}"
         echo -e "${RED}Extracted Address Line: ${address_line}${NC}"
         echo -e "${RED}Extracted IPv4: ${SERVER_WG_IPV4}${NC}"
         echo -e "${RED}Extracted IPv6: ${SERVER_WG_IPV6}${NC}"
         echo -e "${RED}Extracted Port: ${SERVER_PORT}${NC}"
-        echo -e "${RED}Please ensure the [Interface] section has 'Address' and 'ListenPort'.${NC}"
+        echo -e "${RED}Please ensure the original [Interface] section has 'Address' and 'ListenPort'.${NC}"
         exit 1
     fi
     echo -e "${GREEN}Extracted Settings:${NC} IPv4=${SERVER_WG_IPV4:-N/A}, IPv6=${SERVER_WG_IPV6:-N/A}, Port=${SERVER_PORT}"
@@ -413,24 +459,23 @@ function migrateWireGuard() {
     # Check specifically for the angristan script's params file first
     if [[ -f "${WG_CONF_DIR}/params" ]]; then
         echo -e "${GREEN}Detected '${WG_CONF_DIR}/params' file (likely from angristan/wireguard-install).${NC}"
-        echo -e "${GREEN}Attempting to read SERVER_PRIV_KEY automatically...${NC}"
-        # Source the params file safely in a subshell and capture the specific variable
-        local sourced_priv_key=""
-        # Ensure the params file is readable
-        if [[ -r "${WG_CONF_DIR}/params" ]]; then
-             # The command substitution runs 'source' in a subshell
-             sourced_priv_key=$(source "${WG_CONF_DIR}/params" && echo "${SERVER_PRIV_KEY}")
+        # Check read permissions on params file
+        if [[ ! -r "${WG_CONF_DIR}/params" ]]; then
+             echo -e "${ORANGE}Warning: Params file '${WG_CONF_DIR}/params' exists but is not readable. Skipping auto-read.${NC}"
+        else
+            echo -e "${GREEN}Attempting to read SERVER_PRIV_KEY automatically...${NC}"
+            # Source the params file safely in a subshell and capture the specific variable
+            local sourced_priv_key=""
+            sourced_priv_key=$(source "${WG_CONF_DIR}/params" && echo "${SERVER_PRIV_KEY}")
 
-             if [[ -n "${sourced_priv_key}" ]] && echo "${sourced_priv_key}" | grep -Eq '^[A-Za-z0-9+/]{43}=$'; then
+            if [[ -n "${sourced_priv_key}" ]] && echo "${sourced_priv_key}" | grep -Eq '^[A-Za-z0-9+/]{43}=$'; then
                  SERVER_PRIV_KEY="${sourced_priv_key}"
                  echo -e "${GREEN}Server private key successfully read and validated from params file.${NC}"
-             elif [[ -n "${sourced_priv_key}" ]]; then
+            elif [[ -n "${sourced_priv_key}" ]]; then
                  echo -e "${ORANGE}Warning: Value read for SERVER_PRIV_KEY from params file appears invalid. Ignoring.${NC}"
-             else
+            else
                  echo -e "${ORANGE}Warning: Could not read SERVER_PRIV_KEY variable from params file, even though it exists.${NC}"
-             fi
-        else
-             echo -e "${ORANGE}Warning: Params file '${WG_CONF_DIR}/params' exists but is not readable.${NC}"
+            fi
         fi
         # Optionally read other useful params like DNS, but stick to Amnezia defaults for now unless specified
         # Example: sourced_dns1=$(source "${WG_CONF_DIR}/params" && echo "${CLIENT_DNS_1}")
@@ -441,7 +486,7 @@ function migrateWireGuard() {
     if [[ -z "${SERVER_PRIV_KEY}" ]]; then
         # Add a message clarifying why we are asking now
         if [[ -f "${WG_CONF_DIR}/params" ]]; then
-             echo -e "${ORANGE}Could not automatically get a valid private key from the params file.${NC}"
+             echo -e "${ORANGE}Could not automatically get a valid private key from the params file or file was unreadable.${NC}"
         else
              echo -e "${ORANGE}This looks like a standard WireGuard setup or key couldn't be auto-detected.${NC}"
         fi
@@ -492,22 +537,20 @@ function migrateWireGuard() {
     CLIENT_DNS_IPV6_1="2001:4860:4860::8888"
     CLIENT_DNS_IPV6_2="2001:4860:4860::8844"
     setDefaultAmneziaSettings # Sets JC, JMIN, JMAX, S1, S2, H1-4, MTU
+    # Ensure ENABLE_IPV6 reflects extracted IPv6
+    [[ -n "${SERVER_WG_IPV6}" ]] && ENABLE_IPV6="y" || ENABLE_IPV6="n"
+
     # Use default routing unless a specific file exists
     if [ -f "${AWG_CONF_DIR}/default_routing" ]; then
         ALLOWED_IPS=$(cat "${AWG_CONF_DIR}/default_routing")
         echo -e "${GREEN}Using default routing from ${AWG_CONF_DIR}/default_routing: ${ALLOWED_IPS}${NC}"
     else
-        echo -e "${GREEN}Using default routing (0.0.0.0/0, ::/0).${NC}"
+        echo -e "${GREEN}Using default routing (0.0.0.0/0${ENABLE_IPV6:+,::/0}).${NC}"
         ALLOWED_IPS="0.0.0.0/0"
-        if [[ -n "${SERVER_WG_IPV6}" ]]; then # Check if WG had IPv6
+        if [[ ${ENABLE_IPV6} == 'y' ]]; then # Check if WG had IPv6
              ALLOWED_IPS="${ALLOWED_IPS},::/0"
-             ENABLE_IPV6="y" # Ensure IPv6 is marked enabled
-        else
-             ENABLE_IPV6="n"
         fi
     fi
-    # Ensure ENABLE_IPV6 reflects extracted IPv6
-    [[ -n "${SERVER_WG_IPV6}" ]] && ENABLE_IPV6="y" || ENABLE_IPV6="n"
 
 
     # --- Create AmneziaWG directories and params file ---
@@ -575,7 +618,27 @@ EOF
     if [[ ${OS} == "ubuntu" || ${OS} == "debian" ]]; then
         # Assume PPA was added or repo exists if migration is running after initial checks
         apt-get update
-        apt-get install -y amneziawg linux-headers-$(uname -r) || echo -e "${RED}Failed to install amneziawg package!${NC}"
+        # Determine correct headers package name (copied logic from installAmneziaWG)
+        local kernel_headers_pkg="linux-headers-$(uname -r)"
+        if ! apt-cache show "${kernel_headers_pkg}" > /dev/null 2>&1; then
+            echo -e "${ORANGE}Warning: Package ${kernel_headers_pkg} not found. Trying generic headers.${NC}"
+            kernel_headers_pkg="linux-headers-generic"
+            if ! apt-cache show "${kernel_headers_pkg}" > /dev/null 2>&1; then
+                 kernel_headers_pkg="linux-headers-$(echo "$(uname -r)" | cut -d'-' -f3-)"
+                 if ! apt-cache show "${kernel_headers_pkg}" > /dev/null 2>&1; then
+                    echo -e "${RED}Error: Cannot find suitable linux-headers package for dependency.${NC}"
+                    # Don't exit here, maybe amneziawg package doesn't strictly need it now?
+                 else
+                    apt-get install -y "${kernel_headers_pkg}" || echo -e "${ORANGE}Failed to install ${kernel_headers_pkg}. AmneziaWG install might fail.${NC}"
+                 fi
+            else
+                 apt-get install -y "${kernel_headers_pkg}" || echo -e "${ORANGE}Failed to install ${kernel_headers_pkg}. AmneziaWG install might fail.${NC}"
+            fi
+        else
+             apt-get install -y "${kernel_headers_pkg}" || echo -e "${ORANGE}Failed to install ${kernel_headers_pkg}. AmneziaWG install might fail.${NC}"
+        fi
+
+        apt-get install -y amneziawg || { echo -e "${RED}Failed to install amneziawg package!${NC}"; exit 1; }
     elif [[ ${OS} == "rhel" ]]; then
         installAmneziaWGRHEL # Function handles repo and installation
     fi
@@ -652,17 +715,17 @@ EOF
         echo -e "${GREEN}Adding firewall-cmd rules...${NC}"
         local FIREWALLD_IPV4_ADDRESS="${ip_v4_base}.0" # Get subnet like 10.0.0.0
         # Add rules (consider adding --permanent and then --reload, but runtime is often preferred for wg-quick)
-        echo "PostUp = firewall-cmd --zone=public --add-interface=${SERVER_WG_NIC}" >> "${server_conf_file}"
-        echo "PostUp = firewall-cmd --add-port ${SERVER_PORT}/udp" >> "${server_conf_file}"
-        echo "PostUp = firewall-cmd --add-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade'" >> "${server_conf_file}"
-        echo "PostDown = firewall-cmd --zone=public --remove-interface=${SERVER_WG_NIC}" >> "${server_conf_file}"
-        echo "PostDown = firewall-cmd --remove-port ${SERVER_PORT}/udp" >> "${server_conf_file}"
-        echo "PostDown = firewall-cmd --remove-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade'" >> "${server_conf_file}"
+        echo "PostUp = firewall-cmd --zone=public --add-interface=${SERVER_WG_NIC} &> /dev/null" >> "${server_conf_file}" # Redirect output
+        echo "PostUp = firewall-cmd --add-port ${SERVER_PORT}/udp &> /dev/null" >> "${server_conf_file}"
+        echo "PostUp = firewall-cmd --add-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade' &> /dev/null" >> "${server_conf_file}"
+        echo "PostDown = firewall-cmd --zone=public --remove-interface=${SERVER_WG_NIC} &> /dev/null" >> "${server_conf_file}"
+        echo "PostDown = firewall-cmd --remove-port ${SERVER_PORT}/udp &> /dev/null" >> "${server_conf_file}"
+        echo "PostDown = firewall-cmd --remove-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade' &> /dev/null" >> "${server_conf_file}"
 
         if [[ ${ENABLE_IPV6} == 'y' && -n "${SERVER_WG_IPV6}" ]]; then
           local FIREWALLD_IPV6_ADDRESS=$(echo "${SERVER_WG_IPV6}" | sed 's/:[^:]*$/::/')"/64" # Get subnet like fd42:42:42::/64
-          echo "PostUp = firewall-cmd --add-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS} masquerade'" >> "${server_conf_file}"
-          echo "PostDown = firewall-cmd --remove-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS} masquerade'" >> "${server_conf_file}"
+          echo "PostUp = firewall-cmd --add-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS} masquerade' &> /dev/null" >> "${server_conf_file}"
+          echo "PostDown = firewall-cmd --remove-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS} masquerade' &> /dev/null" >> "${server_conf_file}"
         fi
     elif command -v iptables &> /dev/null; then
         echo -e "${GREEN}Adding iptables rules...${NC}"
@@ -735,8 +798,8 @@ EOF
         client_wg_ipv4_peer=$(echo "${peer_allowed_ips}" | tr ',' '\n' | grep -oP '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1)
         client_wg_ipv6_peer=$(echo "${peer_allowed_ips}" | tr ',' '\n' | grep -oP '^[a-fA-F0-9:]+' | grep ':' | head -1 | sed 's|/.*||')
 
-        if [[ -z "${client_wg_ipv4_peer}" ]]; then
-            echo -e "${ORANGE}    Warning: Could not extract client IPv4 from AllowedIPs (${peer_allowed_ips}). Cannot generate client config.${NC}"
+        if [[ -z "${client_wg_ipv4_peer}" && -z "${client_wg_ipv6_peer}" ]]; then # Check if *neither* IP was found
+            echo -e "${ORANGE}    Warning: Could not extract client IPv4 or IPv6 from AllowedIPs (${peer_allowed_ips}). Cannot generate client config.${NC}"
             continue
         fi
 
@@ -747,7 +810,8 @@ EOF
 # Client configuration for ${client_name} - Generated during migration
 # Use this file to enable AmneziaWG obfuscation
 PrivateKey = ${client_priv_key}
-Address = ${client_wg_ipv4_peer}/32$( [[ -n "${client_wg_ipv6_peer}" ]] && echo ",${client_wg_ipv6_peer}/128" )
+# Only include Address line if IPs were found
+Address = $( [[ -n "$client_wg_ipv4_peer" ]] && echo "${client_wg_ipv4_peer}/32" )$( [[ -n "$client_wg_ipv4_peer" && -n "$client_wg_ipv6_peer" ]] && echo "," )$( [[ -n "$client_wg_ipv6_peer" ]] && echo "${client_wg_ipv6_peer}/128" )
 DNS = ${CLIENT_DNS_1}${CLIENT_DNS_2:+,${CLIENT_DNS_2}}${CLIENT_DNS_IPV6_1:+,${CLIENT_DNS_IPV6_1}}${CLIENT_DNS_IPV6_2:+,${CLIENT_DNS_IPV6_2}}
 # AmneziaWG Obfuscation Params (match server)
 Jc = ${JC}
@@ -795,38 +859,15 @@ EOF
     # awg syncconf "${SERVER_WG_NIC}" <(wg-quick strip "${SERVER_WG_NIC}") # Not needed before service start
 }
 
-function saveClientConfig() {
-    # This function seems to be a remnant/duplicate of logic now inside migratePeers or newClient
-    # It was used differently in the original script.
-    # For clarity and to avoid confusion, let's remove it or ensure it's not called during migration.
-    echo -e "${ORANGE}DEBUG: saveClientConfig called - this might be unexpected during migration.${NC}"
-    # Keeping the structure just in case it was called from somewhere missed in refactoring
-    local client_name="$1"
-    local peer_config="$2" # This would be the [Peer] block string
-    echo -e "${RED}Error: saveClientConfig should not be directly called during migration refactor.${NC}"
-    # Add logic here if needed, but prefer migratePeers or newClient
-}
-
 # --- Installation Functions ---
 
 function initialCheck() {
 	isRoot
 	checkOS # Sets $OS variable
 	checkVirt
-    # Check for existing WireGuard or AmneziaWG installations
-    if [[ -f "${PARAMS_FILE}" ]]; then
-        # AmneziaWG already installed, proceed to manage menu
-        return 0 # Indicates existing install
-    elif [[ -d "${WG_CONF_DIR}" ]] && find "${WG_CONF_DIR}" -maxdepth 1 -name "*.conf" -print -quit | grep -q .; then
-        # WireGuard detected, run migration check (which might exit)
-        detectExistingWireGuard
-        # If detectExistingWireGuard proceeds without exiting, it means user chose NOT to migrate.
-        echo -e "${RED}Existing WireGuard found, but user chose not to migrate. Aborting AmneziaWG installation.${NC}"
-        exit 1
-    else
-        # No WireGuard or AmneziaWG params found, proceed with fresh install
-        return 1 # Indicates fresh install needed
-    fi
+    detectExistingWireGuard # Consolidated checks here
+    # If detectExistingWireGuard returns (doesn't exit), it means no existing install found or migration declined/failed
+    return 1 # Indicates fresh install needed
 }
 
 function installQuestions() {
@@ -1094,7 +1135,7 @@ function setupServer() {
     ALLOWED_IPS=$(cat "$allowed_ips_file")
     echo -e "${GREEN}Using default routing from ${allowed_ips_file}: ${ALLOWED_IPS}${NC}"
   else
-    echo -e "${ORANGE}Default routing file ${allowed_ips_file} not found. Using '0.0.0.0/0,::/0' (if IPv6 enabled).${NC}"
+    echo -e "${ORANGE}Default routing file ${allowed_ips_file} not found. Using '0.0.0.0/0${ENABLE_IPV6:+,::/0}'.${NC}"
     ALLOWED_IPS="0.0.0.0/0"
     [[ "$ENABLE_IPV6" == "y" ]] && ALLOWED_IPS="${ALLOWED_IPS},::/0"
   fi
@@ -1137,7 +1178,7 @@ EOF
     echo "net.ipv6.conf.all.forwarding = 1" >> "${sysctl_conf}"
   fi
   # Apply sysctl settings
-  sysctl --system
+  sysctl --system > /dev/null # Hide output
 
   # --- 6. Configure the server interface (Add CIDR back here) ---
   local interface_config_file="${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"
@@ -1168,20 +1209,24 @@ EOF
     echo -e "${GREEN}Using firewall-cmd.${NC}"
     local FIREWALLD_IPV4_ADDRESS="${ip_v4_base}.0" # Get subnet like 10.0.0.0
     cat >> "${interface_config_file}" <<EOF
-PostUp = firewall-cmd --zone=public --add-interface=${SERVER_WG_NIC}
-PostUp = firewall-cmd --add-port ${SERVER_PORT}/udp
-PostUp = firewall-cmd --add-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade'
-PostDown = firewall-cmd --zone=public --remove-interface=${SERVER_WG_NIC}
-PostDown = firewall-cmd --remove-port ${SERVER_PORT}/udp
-PostDown = firewall-cmd --remove-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade'
+PostUp = firewall-cmd --zone=public --add-interface=${SERVER_WG_NIC} &> /dev/null
+PostUp = firewall-cmd --add-port ${SERVER_PORT}/udp &> /dev/null
+PostUp = firewall-cmd --add-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade' &> /dev/null
+PostDown = firewall-cmd --zone=public --remove-interface=${SERVER_WG_NIC} &> /dev/null
+PostDown = firewall-cmd --remove-port ${SERVER_PORT}/udp &> /dev/null
+PostDown = firewall-cmd --remove-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade' &> /dev/null
 EOF
     if [[ ${ENABLE_IPV6} == 'y' && -n "${SERVER_WG_IPV6}" ]]; then
       local FIREWALLD_IPV6_ADDRESS=$(echo "${SERVER_WG_IPV6}" | sed 's/:[^:]*$/::/')"/64" # Get subnet like fd42:42:42::/64
       cat >> "${interface_config_file}" <<EOF
-PostUp = firewall-cmd --add-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS} masquerade'
-PostDown = firewall-cmd --remove-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS} masquerade'
+PostUp = firewall-cmd --add-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS} masquerade' &> /dev/null
+PostDown = firewall-cmd --remove-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS} masquerade' &> /dev/null
 EOF
     fi
+    # Make runtime rules permanent
+    echo -e "${GREEN}Making firewall rules permanent (firewall-cmd)...${NC}"
+    firewall-cmd --runtime-to-permanent || echo -e "${ORANGE}Warning: Failed to make firewall rules permanent.${NC}"
+
   elif command -v iptables &> /dev/null && command -v ip6tables &>/dev/null; then
     echo -e "${GREEN}Using iptables/ip6tables.${NC}"
     cat >> "${interface_config_file}" <<EOF
@@ -1202,6 +1247,16 @@ PostDown = ip6tables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT
 PostDown = ip6tables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
 EOF
     fi
+    # Persistence for iptables
+     if command -v iptables-save &> /dev/null; then
+        echo -e "${GREEN}Saving iptables rules for persistence...${NC}"
+        mkdir -p /etc/iptables
+        iptables-save > /etc/iptables/rules.v4
+        if [[ ${ENABLE_IPV6} == 'y' && -n "${SERVER_WG_IPV6}" ]] && command -v ip6tables-save &>/dev/null; then
+            ip6tables-save > /etc/iptables/rules.v6
+        fi
+        echo -e "${ORANGE}Note: Ensure iptables-persistent (Debian/Ubuntu) or equivalent service is enabled to load these rules on boot.${NC}"
+     fi
   else
       echo -e "${ORANGE}Warning: No firewall detected (firewalld or iptables). Firewall rules not added.${NC}"
       echo -e "${ORANGE}You may need to configure firewall rules manually for UDP port ${SERVER_PORT} and NAT/Forwarding.${NC}"
@@ -1289,7 +1344,7 @@ function installAmneziaWG() {
              echo -e "${RED}Failed to add Amnezia PPA directly. Trying manual GPG key import...${NC}"
              # Attempt manual key import (adjust key ID/URL if needed based on PPA)
              gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys E45A7054 && \
-             gpg --export --armor E45A7054 | sudo apt-key add - && \
+             gpg --export --armor E45A7054 | sudo tee /etc/apt/trusted.gpg.d/amnezia_ppa.gpg >/dev/null && \
              add-apt-repository -y ppa:amnezia/ppa && \
              echo -e "${GREEN}Manual GPG key import successful.${NC}" || \
              { echo -e "${RED}Failed to add Amnezia PPA even after manual GPG key attempt.${NC}"; exit 1; }
@@ -1367,11 +1422,11 @@ function newClient() {
     # Extract last octet/part from existing client AllowedIPs in server config
     # Make sure to match only IPs in the expected subnet base
     local ip_v4_base="${SERVER_WG_IPV4%.*}" # Get e.g., 10.0.0 from 10.0.0.1
-    local existing_ips=$(grep -oP "AllowedIPs *= *\K${ip_v4_base}\.[0-9]+(?=/)" "${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf")
+    local existing_ips=$(grep -oP "AllowedIPs *=.*\K${ip_v4_base}\.[0-9]+(?=/)" "${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf")
     if [[ -n "$existing_ips" ]]; then
         while IFS= read -r ip; do
             local current_last_part=$(echo "$ip" | cut -d'.' -f4)
-            if [[ "$current_last_part" -gt "$last_ip_part" ]]; then
+            if [[ "$current_last_part" =~ ^[0-9]+$ ]] && [[ "$current_last_part" -gt "$last_ip_part" ]]; then
                 last_ip_part=$current_last_part
             fi
         done <<< "$existing_ips"
@@ -1382,23 +1437,24 @@ function newClient() {
     local client_wg_ipv6=""
     if [[ ${ENABLE_IPV6} == 'y' && -n "${SERVER_WG_IPV6}" ]]; then
         # Construct IPv6 address, e.g., fd42:42:42::2
-        # More robustly handle existing indices if they don't start at ::1
         local ipv6_base=$(echo "${SERVER_WG_IPV6}" | sed 's/::.*//') # Get base like fd42:42:42
-        # Find highest existing index for IPv6
         local last_ipv6_part=1
+        # Extract existing IPv6 indices, convert hex to decimal, find max
         local existing_ipv6s=$(grep -oP "AllowedIPs *=.*\K${ipv6_base}::[0-9a-fA-F]+(?=/)" "${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf")
          if [[ -n "$existing_ipv6s" ]]; then
              while IFS= read -r ip6; do
                  local current_last_part_hex=$(echo "$ip6" | sed 's/.*:://') # Get hex index
-                 local current_last_part_dec=$((16#${current_last_part_hex})) # Convert hex to decimal
-                 if [[ "$current_last_part_dec" -gt "$last_ipv6_part" ]]; then
-                     last_ipv6_part=$current_last_part_dec
+                 # Ensure it's a valid hex number before converting
+                 if [[ "$current_last_part_hex" =~ ^[0-9a-fA-F]+$ ]]; then
+                    local current_last_part_dec=$((16#${current_last_part_hex})) # Convert hex to decimal
+                    if [[ "$current_last_part_dec" -gt "$last_ipv6_part" ]]; then
+                        last_ipv6_part=$current_last_part_dec
+                    fi
                  fi
              done <<< "$existing_ipv6s"
          fi
         local next_ipv6_index_dec=$((last_ipv6_part + 1))
-        # Convert back to hex if needed, or just use decimal for simplicity if supported
-        client_wg_ipv6="${ipv6_base}::${next_ipv6_index_dec}" # Use decimal index directly
+        client_wg_ipv6="${ipv6_base}::$(printf "%x" ${next_ipv6_index_dec})" # Convert index back to hex for consistency
     fi
 
     # Client config directory
@@ -1452,7 +1508,7 @@ EOF
 
     # Apply the updated server configuration live
     # Use syncconf for adding peers without full restart
-    if ! awg syncconf "${SERVER_WG_NIC}" <(wg-quick strip "${SERVER_WG_NIC}"); then
+    if ! awg syncconf "${SERVER_WG_NIC}" <(cat "${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"); then # Use cat directly instead of strip
         echo -e "${RED}Failed to apply updated configuration using 'awg syncconf'.${NC}"
         echo -e "${ORANGE}A server restart might be needed: systemctl restart awg-quick@${SERVER_WG_NIC}${NC}"
     else
@@ -1481,6 +1537,8 @@ function listClients() {
     # Source params if needed to ensure SERVER_WG_NIC is set
     if [[ -z "${SERVER_WG_NIC}" && -f "${PARAMS_FILE}" ]]; then
        source "${PARAMS_FILE}"
+    elif [[ ! -f "${PARAMS_FILE}" && -z "${SERVER_WG_NIC}" ]]; then
+         echo -e "${RED}Cannot determine server interface name.${NC}"; return 1;
     fi
     local server_conf_file="${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"
     if [[ ! -f "${server_conf_file}" ]]; then
@@ -1503,8 +1561,7 @@ function listClients() {
 
     local i=1
     while IFS= read -r client_name; do
-        # Extract AllowedIPs for this specific client
-        # Use awk to find the block for the client and get AllowedIPs
+        # Extract AllowedIPs for this specific client using paragraph mode awk
         local client_ips=$(awk -v name="${client_name}" '
             BEGIN { RS = "" ; FS = "\n" } # Process paragraph mode
             $1 == "### Client " name {
@@ -1541,6 +1598,8 @@ function revokeClient() {
     # Source params if needed
     if [[ -z "${SERVER_WG_NIC}" && -f "${PARAMS_FILE}" ]]; then
        source "${PARAMS_FILE}"
+    elif [[ ! -f "${PARAMS_FILE}" && -z "${SERVER_WG_NIC}" ]]; then
+         echo -e "${RED}Cannot determine server interface name.${NC}"; return 1;
     fi
     local server_conf_file="${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"
     if [[ ! -f "${server_conf_file}" ]]; then
@@ -1597,6 +1656,7 @@ function revokeClient() {
 
     if [[ $? -eq 0 ]] && [[ -s "${server_conf_file}.tmp" ]]; then
         # awk in paragraph mode might add extra newlines, clean them up
+        # Use grep to remove blank lines, then awk to ensure single newline endings
         grep -v '^$' "${server_conf_file}.tmp" | awk 'BEGIN{ORS="\n"}{print}' > "${server_conf_file}"
         rm "${server_conf_file}.tmp"
         echo -e "${GREEN}Client section removed from server configuration.${NC}"
@@ -1625,7 +1685,7 @@ function revokeClient() {
 
     # Apply the updated server configuration live
     echo -e "${GREEN}Applying updated server configuration...${NC}"
-    if ! awg syncconf "${SERVER_WG_NIC}" <(wg-quick strip "${SERVER_WG_NIC}"); then
+    if ! awg syncconf "${SERVER_WG_NIC}" <(cat "${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"); then # Use cat
         echo -e "${RED}Failed to apply updated configuration using 'awg syncconf'.${NC}"
         echo -e "${ORANGE}A server restart might be needed: systemctl restart awg-quick@${SERVER_WG_NIC}${NC}"
     else
@@ -1770,7 +1830,7 @@ EOF
 
     # --- Apply Changes Live ---
     echo -e "${GREEN}Applying updated server configuration...${NC}"
-    if ! awg syncconf "${SERVER_WG_NIC}" <(wg-quick strip "${SERVER_WG_NIC}"); then
+    if ! awg syncconf "${SERVER_WG_NIC}" <(cat "${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"); then # Use cat
         echo -e "${RED}Failed to apply updated configuration using 'awg syncconf'.${NC}"
         echo -e "${ORANGE}A server restart might be needed: systemctl restart awg-quick@${SERVER_WG_NIC}${NC}"
     else
@@ -1804,6 +1864,8 @@ function regenerateAllClientConfigs() {
     # Source params if needed
     if [[ -z "${SERVER_WG_NIC}" && -f "${PARAMS_FILE}" ]]; then
        source "${PARAMS_FILE}"
+    elif [[ ! -f "${PARAMS_FILE}" && -z "${SERVER_WG_NIC}" ]]; then
+         echo -e "${RED}Cannot determine server interface name.${NC}"; return 1;
     fi
     local server_conf_file="${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"
     if [[ ! -f "${server_conf_file}" ]]; then
@@ -2035,9 +2097,8 @@ function updateServerConfig() {
     # Source params if needed
     if [[ -z "${SERVER_WG_NIC}" && -f "${PARAMS_FILE}" ]]; then
        source "${PARAMS_FILE}"
-    elif [[ ! -f "${PARAMS_FILE}" ]]; then
-        echo -e "${RED}Parameters file not found: ${PARAMS_FILE}${NC}"
-        return 1
+    elif [[ ! -f "${PARAMS_FILE}" && -z "${SERVER_WG_NIC}" ]]; then
+         echo -e "${RED}Cannot determine server interface name. Cannot update configs.${NC}"; return 1;
     fi
     local server_conf_file="${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"
     if [[ ! -f "${server_conf_file}" ]]; then
@@ -2064,11 +2125,14 @@ function updateServerConfig() {
     sed -i "s|^H3 *=.*|H3 = ${H3}|" "${server_conf_file}"
     sed -i "s|^H4 *=.*|H4 = ${H4}|" "${server_conf_file}"
     sed -i "s|^MTU *=.*|MTU = ${MTU}|" "${server_conf_file}"
-    # Note: We don't typically change Address, ListenPort, PrivateKey here.
+    # Update Address line if server IPs changed (less common scenario)
+    local new_address_line="Address = ${SERVER_WG_IPV4}/24$( [[ ${ENABLE_IPV6} == 'y' && -n "${SERVER_WG_IPV6}" ]] && echo ",${SERVER_WG_IPV6}/64" )"
+    local escaped_new_address_line=$(echo "${new_address_line}" | sed -e 's/[\/&]/\\&/g')
+    sed -i "s|^Address *=.*|${escaped_new_address_line}|" "${server_conf_file}"
+
 
     # Update settings in params file
-    # Use sed; if the line doesn't exist, append it (less robust than proper parsing but ok for this)
-    local keys_to_update=("JC" "JMIN" "JMAX" "S1" "S2" "H1" "H2" "H3" "H4" "MTU" "ALLOWED_IPS" "ENABLE_IPV6" "SERVER_WG_IPV4" "SERVER_WG_IPV6") # Add other changeable params if needed
+    local keys_to_update=("JC" "JMIN" "JMAX" "S1" "S2" "H1" "H2" "H3" "H4" "MTU" "ALLOWED_IPS" "ENABLE_IPV6" "SERVER_WG_IPV4" "SERVER_WG_IPV6" "SERVER_PORT" "SERVER_PUB_IP" "SERVER_PUB_NIC")
     for key in "${keys_to_update[@]}"; do
         local value="${!key}" # Indirect variable expansion
         # Escape characters for sed (specifically / and &)
@@ -2567,14 +2631,19 @@ function startWebServer() {
 function cleanup() {
     # Function to remove configuration files and directories
     echo -e "${GREEN}Removing AmneziaWG configuration files...${NC}"
+
+    # Source SERVER_WG_NIC one last time if possible, just for the config file name
+    local nic_to_remove="${SERVER_WG_NIC}" # Use local var
+    if [[ -z "${nic_to_remove}" && -f "${PARAMS_FILE}" ]]; then
+        # Source into a subshell to avoid polluting global scope if cleanup is called elsewhere
+        nic_to_remove=$(source "${PARAMS_FILE}" && echo "${SERVER_WG_NIC}")
+    fi
+
     # Use -f to avoid errors if files/dirs don't exist
     rm -f "${PARAMS_FILE}"
-    # Source SERVER_WG_NIC one last time if possible, just for the config file name
-    if [[ -z "${SERVER_WG_NIC}" && -f "${PARAMS_FILE}" ]]; then
-        source "${PARAMS_FILE}"
-    fi
-    [[ -n "${SERVER_WG_NIC}" ]] && rm -f "${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"
+    [[ -n "${nic_to_remove}" ]] && rm -f "${AWG_CONF_DIR}/${nic_to_remove}.conf"
     rm -f "${AWG_CONF_DIR}/default_routing" # Remove the routing file (FIXED)
+    rm -f "${AWG_CONF_DIR}/wg-quick-strip.err" # Remove potential leftover error file
 
     # Remove potentially empty directory, check if empty first
     if [ -d "${AWG_CONF_DIR}" ] && [ -z "$(ls -A "${AWG_CONF_DIR}")" ]; then
@@ -2588,12 +2657,13 @@ function cleanup() {
     # Remove sysctl config
     rm -f "/etc/sysctl.d/99-amneziawg-forward.conf"
     echo -e "${GREEN}Applying sysctl changes (disabling forwarding if no other rule enables it)...${NC}"
-    sysctl --system
+    sysctl --system > /dev/null # Hide output
 
     # Remove repository configs
     if [[ ${OS} == "ubuntu" || ${OS} == "debian" ]]; then
         rm -f /etc/apt/sources.list.d/amnezia*.list # Remove amnezia PPA file
         rm -f /etc/apt/sources.list.d/amnezia*.sources # Also remove new format if present
+        rm -f /etc/apt/trusted.gpg.d/amnezia_ppa.gpg # Remove gpg key if manually added
         echo -e "${GREEN}Attempting apt update to refresh sources after PPA removal...${NC}"
         apt-get update > /dev/null 2>&1 || echo -e "${ORANGE}apt update failed, may need manual run.${NC}"
     elif [[ ${OS} == "rhel" ]]; then
@@ -2621,7 +2691,7 @@ function uninstallWg() {
         source "${PARAMS_FILE}"
     else
         # Prompt if params file missing
-        read -rp "Enter the AmneziaWG interface name used (e.g., awg0): " -e -i "${SERVER_WG_NIC}" SERVER_WG_NIC_INPUT
+        read -rp "Enter the AmneziaWG interface name used (e.g., awg0): " -e -i "${SERVER_WG_NIC:-awg0}" SERVER_WG_NIC_INPUT
         SERVER_WG_NIC="${SERVER_WG_NIC_INPUT}" # Use input if params missing
     fi
 
@@ -2673,7 +2743,7 @@ function manageMenu() {
         echo "Server Interface: ${SERVER_WG_NIC}"
         echo "Listen Port: ${SERVER_PORT}"
         echo "Public Endpoint: ${SERVER_PUB_IP}"
-        echo "Default Routing: ${ALLOWED_IPS}"
+        echo "Default Routing: ${ALLOWED_IPS:0:70}${ALLOWED_IPS:70:...}" # Truncate long routing lists
         echo ""
         echo "Select an option:"
         echo "   1) Add a new client"
@@ -2718,8 +2788,6 @@ function manageMenu() {
              # Configure Allowed IPs (updates global var and file)
              if configureAllowedIPs; then
                  # Update server params file with new ALLOWED_IPS
-                 # updateServerConfig is called within configureObfuscationSettings if changes are made
-                 # Here we only changed AllowedIPs, so just need to update params and maybe restart
                  echo -e "${GREEN}Updating parameter file with new default routing...${NC}"
                  if grep -q "^ALLOWED_IPS=" "${PARAMS_FILE}"; then
                     local sed_allowed_ips=$(echo "${ALLOWED_IPS}" | sed -e 's/[\/&]/\\&/g')

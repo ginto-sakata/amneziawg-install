@@ -314,8 +314,7 @@ function migratePeers() {
     fi
 
     echo -e "${GREEN}Migrating peer configurations...${NC}"
-
-    # Create base server configuration
+    # Create base server configuration. Include S1 and S2.
     echo "[Interface]
 Address = ${SERVER_WG_IPV4}/24,${SERVER_WG_IPV6}/64
 ListenPort = ${SERVER_PORT}
@@ -323,6 +322,8 @@ PrivateKey = ${SERVER_PRIV_KEY}
 Jc = ${JC}
 Jmin = ${JMIN}
 Jmax = ${JMAX}
+S1 = ${S1}
+S2 = ${S2}
 H1 = ${H1}
 H2 = ${H2}
 H3 = ${H3}
@@ -334,6 +335,7 @@ MTU = ${MTU}" >"/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
         FIREWALLD_IPV6_ADDRESS=$(echo "${SERVER_WG_IPV6}" | sed 's/:[^:]*$/:0/')
         echo "PostUp = firewall-cmd --zone=public --add-interface=${SERVER_WG_NIC} && firewall-cmd --add-port ${SERVER_PORT}/udp && firewall-cmd --add-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade' && firewall-cmd --add-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS}/24 masquerade'
 PostDown = firewall-cmd --zone=public --remove-interface=${SERVER_WG_NIC} && firewall-cmd --remove-port ${SERVER_PORT}/udp && firewall-cmd --remove-rich-rule='rule family=ipv4 source address=${FIREWALLD_IPV4_ADDRESS}/24 masquerade' && firewall-cmd --remove-rich-rule='rule family=ipv6 source address=${FIREWALLD_IPV6_ADDRESS}/24 masquerade'" >>"/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+
     else
         echo "PostUp = iptables -I INPUT -p udp --dport ${SERVER_PORT} -j ACCEPT
 PostUp = iptables -I FORWARD -i ${SERVER_PUB_NIC} -o ${SERVER_WG_NIC} -j ACCEPT
@@ -366,18 +368,19 @@ PostDown = ip6tables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE" >
                     if [[ -n ${client_name} && -n ${client_config} ]]; then
                         # Check if we already migrated this client
                         if [[ -z ${migrated_clients[${client_name}]} ]]; then
-                            echo -e "${GREEN}Migrating client: ${client_name}${NC}"
-                            saveClientConfig "${client_name}" "${client_config}"
-                            migrated_clients[${client_name}]=1
+                           echo -e "${GREEN}Migrating client: ${client_name}${NC}"
+                           saveClientConfig "${client_name}" "${client_config}"
+                           migrated_clients[${client_name}]=1
                         else
-                            echo -e "${ORANGE}Skipping duplicate client: ${client_name}${NC}"
+                           echo -e "${ORANGE}Skipping duplicate client: ${client_name}${NC}"
                         fi
+
                     fi
                     # Start new client
                     client_name=${name}
                     client_config="PublicKey = $(echo "${config_line}" | grep -oP 'PublicKey = \K[a-zA-Z0-9+/]{43}=')"
                     if echo "${config_line}" | grep -q "PresharedKey"; then
-                        client_config="${client_config}
+                       client_config="${client_config}
 PresharedKey = $(echo "${config_line}" | grep -oP 'PresharedKey = \K[a-zA-Z0-9+/]{43}=')"
                     fi
                     client_config="${client_config}
@@ -433,7 +436,6 @@ AllowedIPs = $(echo "${config_line}" | grep -oP 'AllowedIPs = \K[0-9\./,:]+')"
     fi
 
     rm -f /tmp/peers.txt
-
     echo -e "${GREEN}Migration complete. Migrated ${#migrated_clients[@]} unique peer configurations.${NC}"
 }
 
@@ -449,20 +451,21 @@ function saveClientConfig() {
     # Load current settings from params
     source /etc/amnezia/amneziawg/params
 
-    # Create client config
-    echo "[Interface]
+    # Create client config. Include S1 and S2.
+        echo "[Interface]
 PrivateKey = ${CLIENT_PRIV_KEY:-$(wg genkey)}
 Address = ${CLIENT_WG_IPV4}/32,${CLIENT_WG_IPV6}/128
 DNS = ${CLIENT_DNS_1},${CLIENT_DNS_2},${CLIENT_DNS_IPV6_1},${CLIENT_DNS_IPV6_2}
 Jc = ${JC}
 Jmin = ${JMIN}
 Jmax = ${JMAX}
+S1 = ${S1}
+S2 = ${S2}
 H1 = ${H1}
 H2 = ${H2}
 H3 = ${H3}
 H4 = ${H4}
 MTU = ${MTU}
-
 [Peer]
 PublicKey = ${SERVER_PUB_KEY}
 PresharedKey = ${CLIENT_PRE_SHARED_KEY}
@@ -927,8 +930,7 @@ function revokeClient() {
 
 function regenerateClientConfig() {
     local CLIENT_NAME=$1
-
-	echo ""
+    echo ""
     echo "╔═══════════════════════════════════════════════╗"
     echo "║          Regenerate Client Configuration      ║"
     echo "╚═══════════════════════════════════════════════╝"
@@ -954,8 +956,8 @@ function regenerateClientConfig() {
     CLIENT_PRIV_KEY=$(awg genkey)
     CLIENT_PUB_KEY=$(echo "${CLIENT_PRIV_KEY}" | awg pubkey)
 
-    # Update server config with new public key
-    sed -i "/^### Client ${CLIENT_NAME}$/,/^###/ s/PublicKey = .*/PublicKey = ${CLIENT_PUB_KEY}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    # Update server config with new public key. Use | as delimiter.
+    sed -i "s|PublicKey = .*|PublicKey = ${CLIENT_PUB_KEY}|" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
 
     # Create client config
     HOME_DIR=$(getHomeDirForClient "${SUDO_USER:-root}")
@@ -963,7 +965,7 @@ function regenerateClientConfig() {
     mkdir -p "${CLIENT_CONFIG_DIR}"
     chmod 700 "${CLIENT_CONFIG_DIR}"
 
-    # Create client config file
+    # Create client config file.  Include S1 and S2.
     cat > "${CLIENT_CONFIG_DIR}/${SERVER_WG_NIC}-${CLIENT_NAME}.conf" <<EOF
 [Interface]
 PrivateKey = ${CLIENT_PRIV_KEY}
@@ -972,19 +974,19 @@ DNS = ${CLIENT_DNS_1},${CLIENT_DNS_2},${CLIENT_DNS_IPV6_1},${CLIENT_DNS_IPV6_2}
 Jc = ${JC}
 Jmin = ${JMIN}
 Jmax = ${JMAX}
+S1 = ${S1}
+S2 = ${S2}
 H1 = ${H1}
 H2 = ${H2}
 H3 = ${H3}
 H4 = ${H4}
 MTU = ${MTU}
-
 [Peer]
 PublicKey = ${SERVER_PUB_KEY}
 PresharedKey = ${CLIENT_PRE_SHARED_KEY}
 Endpoint = ${SERVER_PUB_IP}:${SERVER_PORT}
 AllowedIPs = ${ALLOWED_IPS}
 EOF
-
     # Update the AmneziaWG interface
     awg syncconf "${SERVER_WG_NIC}" <(awg-quick strip "${SERVER_WG_NIC}")
 
@@ -992,7 +994,16 @@ EOF
     echo -e "${GREEN}New configuration file is at ${CLIENT_CONFIG_DIR}/${SERVER_WG_NIC}-${CLIENT_NAME}.conf${NC}"
 }
 
+
+
 function configureObfuscationSettings() {
+    local RED='\033[0;31m'
+    local GREEN='\033[0;32m'
+    local ORANGE='\033[0;33m'
+    local NC='\033[0m' # No Color
+
+    # No need to source params again, it's done globally
+
     # --- Store original settings for comparison ---
     local orig_JC="$JC"
     local orig_JMIN="$JMIN"
@@ -1028,7 +1039,7 @@ function configureObfuscationSettings() {
 
     # --- User Input ---
     echo "Select obfuscation preset:"
-    echo "1) Mobile"
+    echo "1) Mobile (Recommended)"
     echo "2) Standard"
     echo "3) Custom settings"
     echo "4) Back (no changes)"
@@ -1195,33 +1206,35 @@ function configureObfuscationSettings() {
 function updateServerConfig() {
     echo -e "${GREEN}Updating server configuration with new settings...${NC}"
 
-    # Update MTU in server config.  Corrected spacing.
-    sed -i "s/MTU *= *.*/MTU = ${MTU}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    # Update MTU in server config. Use | as delimiter.
+    sed -i "s|MTU *= *.*|MTU = ${MTU}|" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
 
-    # Update obfuscation settings in server config. Corrected spacing.
-    sed -i "s/Jc *= *.*/Jc = ${JC}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
-    sed -i "s/Jmin *= *.*/Jmin = ${JMIN}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
-    sed -i "s/Jmax *= *.*/Jmax = ${JMAX}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
-    sed -i "s/H1 *= *.*/H1 = ${H1}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
-    sed -i "s/H2 *= *.*/H2 = ${H2}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
-    sed -i "s/H3 *= *.*/H3 = ${H3}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
-    sed -i "s/H4 *= *.*/H4 = ${H4}/" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    # Update obfuscation settings in server config. Use | as delimiter.  Include S1 and S2.
+    sed -i "s|Jc *= *.*|Jc = ${JC}|" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    sed -i "s|Jmin *= *.*|Jmin = ${JMIN}|" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    sed -i "s|Jmax *= *.*|Jmax = ${JMAX}|" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    sed -i "s|S1 *= *.*|S1 = ${S1}|" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    sed -i "s|S2 *= *.*|S2 = ${S2}|" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    sed -i "s|H1 *= *.*|H1 = ${H1}|" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    sed -i "s|H2 *= *.*|H2 = ${H2}|" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    sed -i "s|H3 *= *.*|H3 = ${H3}|" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
+    sed -i "s|H4 *= *.*|H4 = ${H4}|" "/etc/amnezia/amneziawg/${SERVER_WG_NIC}.conf"
 
-    # Update ALLOWED_IPS in params (This part seems fine, leaving as is)
-    sed -i "s/ALLOWED_IPS=.*/ALLOWED_IPS=${ALLOWED_IPS}/" /etc/amnezia/amneziawg/params
+    # Update ALLOWED_IPS in params.  Use | as delimiter.
+    sed -i "s|ALLOWED_IPS=.*|ALLOWED_IPS=${ALLOWED_IPS}|" /etc/amnezia/amneziawg/params
 
-    # Update JC, JMIN, JMAX, S1, S2, H1-4, MTU in params (This part also seems fine)
-    sed -i "s/JC=.*/JC=${JC}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "JC=${JC}" >> /etc/amnezia/amneziawg/params
-    sed -i "s/JMIN=.*/JMIN=${JMIN}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "JMIN=${JMIN}" >> /etc/amnezia/amneziawg/params
-    sed -i "s/JMAX=.*/JMAX=${JMAX}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "JMAX=${JMAX}" >> /etc/amnezia/amneziawg/params
-    sed -i "s/S1=.*/S1=${S1}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "S1=${S1}" >> /etc/amnezia/amneziawg/params
-    sed -i "s/S2=.*/S2=${S2}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "S2=${S2}" >> /etc/amnezia/amneziawg/params
-    sed -i "s/H1=.*/H1=${H1}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "H1=${H1}" >> /etc/amnezia/amneziawg/params
-    sed -i "s/H2=.*/H2=${H2}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "H2=${H2}" >> /etc/amnezia/amneziawg/params
-    sed -i "s/H3=.*/H3=${H3}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "H3=${H3}" >> /etc/amnezia/amneziawg/params
-    sed -i "s/H4=.*/H4=${H4}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "H4=${H4}" >> /etc/amnezia/amneziawg/params
-    sed -i "s/MTU=.*/MTU=${MTU}/" /etc/amnezia/amneziawg/params 2>/dev/null || echo "MTU=${MTU}" >> /etc/amnezia/amneziawg/params
-  
+    # Update JC, JMIN, JMAX, S1, S2, H1-4, MTU in params. Use | as delimiter.
+    sed -i "s|JC=.*|JC=${JC}|" /etc/amnezia/amneziawg/params 2>/dev/null || echo "JC=${JC}" >> /etc/amnezia/amneziawg/params
+    sed -i "s|JMIN=.*|JMIN=${JMIN}|" /etc/amnezia/amneziawg/params 2>/dev/null || echo "JMIN=${JMIN}" >> /etc/amnezia/amneziawg/params
+    sed -i "s|JMAX=.*|JMAX=${JMAX}|" /etc/amnezia/amneziawg/params 2>/dev/null || echo "JMAX=${JMAX}" >> /etc/amnezia/amneziawg/params
+    sed -i "s|S1=.*|S1=${S1}|" /etc/amnezia/amneziawg/params 2>/dev/null || echo "S1=${S1}" >> /etc/amnezia/amneziawg/params
+    sed -i "s|S2=.*|S2=${S2}|" /etc/amnezia/amneziawg/params 2>/dev/null || echo "S2=${S2}" >> /etc/amnezia/amneziawg/params
+    sed -i "s|H1=.*|H1=${H1}|" /etc/amnezia/amneziawg/params 2>/dev/null || echo "H1=${H1}" >> /etc/amnezia/amneziawg/params
+    sed -i "s|H2=.*|H2=${H2}|" /etc/amnezia/amneziawg/params 2>/dev/null || echo "H2=${H2}" >> /etc/amnezia/amneziawg/params
+    sed -i "s|H3=.*|H3=${H3}|" /etc/amnezia/amneziawg/params 2>/dev/null || echo "H3=${H3}" >> /etc/amnezia/amneziawg/params
+    sed -i "s|H4=.*|H4=${H4}|" /etc/amnezia/amneziawg/params 2>/dev/null || echo "H4=${H4}" >> /etc/amnezia/amneziawg/params
+    sed -i "s|MTU=.*|MTU=${MTU}|" /etc/amnezia/amneziawg/params 2>/dev/null || echo "MTU=${MTU}" >> /etc/amnezia/amneziawg/params
+
     # Restart AmneziaWG service to apply changes
     systemctl restart "awg-quick@${SERVER_WG_NIC}"
 

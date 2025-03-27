@@ -25,8 +25,8 @@ OS_VERSION=""
 SERVER_PUB_IP=""
 SERVER_PUB_NIC=""
 SERVER_WG_NIC="awg0" # Default interface name
-SERVER_WG_IPV4=""
-SERVER_WG_IPV6=""
+SERVER_WG_IPV4=""    # Will store IP WITHOUT CIDR
+SERVER_WG_IPV6=""    # Will store IP WITHOUT CIDR
 SERVER_PORT=""
 SERVER_PRIV_KEY=""
 SERVER_PUB_KEY=""
@@ -313,11 +313,12 @@ function detectExistingWireGuard() {
 
         echo -e "${RED}AmneziaWG installation will attempt to migrate your existing WireGuard setup.${NC}"
         echo "- Existing WireGuard services will be stopped and disabled."
-        echo "- Server settings (IPs, Port) will be reused."
-        echo "- Server private key will be requested (if standard install) or read from params (if script install)."
-        echo -e "- ${ORANGE}Client private keys CANNOT be migrated. New client config files will be generated.${NC}"
-        echo "- Old WireGuard config files will remain in ${WG_CONF_DIR} but will not be active."
-        echo "- New client config files will be saved to a directory like ~/amneziawg/."
+        echo "- Server settings (IPs, Port, Server Private Key) will be reused to maintain server identity."
+        echo "- Client authorization (public keys) will be migrated to the new server config."
+        echo -e "- ${ORANGE}NEW client config files (with AmneziaWG obfuscation settings) will be generated in ~/amneziawg/.${NC}"
+        echo -e "- ${ORANGE}These NEW config files MUST be distributed to clients to enable obfuscation.${NC}"
+        echo -e "- ${ORANGE}Existing client config files MAY still work for basic connectivity (without obfuscation), but using the new files is recommended.${NC}"
+        echo "- Old WireGuard config files (`/etc/wireguard/*.conf`) will remain as backups but the service will be inactive."
         echo ""
         read -rp "Do you want to proceed with migration? [y/n]: " -e -i "y" CONFIRM
         if [[ ${CONFIRM,,} == 'y' ]]; then
@@ -372,7 +373,7 @@ function migrateWireGuard() {
     # Use wg-quick strip for cleaner parsing
     local stripped_config=""
     if ! stripped_config=$(wg-quick strip "${wg_interface_name}" 2>/dev/null); then
-        echo -e "${RED}Failed to strip configuration using 'wg-quick strip ${wg_interface_name}'. Reading file directly.${NC}"
+        echo -e "${ORANGE}Warning: Failed to strip configuration using 'wg-quick strip ${wg_interface_name}'. Reading file directly.${NC}"
         # Fallback to reading file if strip fails
         if ! stripped_config=$(cat "${wg_conf_file}"); then
              echo -e "${RED}Failed to read configuration file: ${wg_conf_file}${NC}"
@@ -380,18 +381,25 @@ function migrateWireGuard() {
         fi
     fi
 
-    # Extract Interface settings
-    SERVER_WG_IPV4=$(echo "${stripped_config}" | grep -oP 'Address *=.*\K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?=/)' | head -1)
-    SERVER_WG_IPV6=$(echo "${stripped_config}" | grep -oP 'Address *=.*\K[a-fA-F0-9:]+(?=/)' | grep ':' | head -1) # Check for ':' to ensure it's IPv6
-    SERVER_PORT=$(echo "${stripped_config}" | grep -oP 'ListenPort *= *\K[0-9]+' | head -1)
+    # Extract Interface settings using improved method
+    local address_line=$(echo "${stripped_config}" | grep -m 1 -oP 'Address *= *\K.*')
+    SERVER_WG_IPV4=$(echo "$address_line" | grep -oP '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | head -1) # Extract IPv4 (no CIDR)
+    SERVER_WG_IPV6=$(echo "$address_line" | grep -oP '[a-fA-F0-9:]+:[a-fA-F0-9:/]+' | grep ':' | head -1 | sed 's|/.*||') # Extract IPv6 (no CIDR)
+    SERVER_PORT=$(echo "${stripped_config}" | grep -m 1 -oP 'ListenPort *= *\K[0-9]+')
 
     # Validate extracted mandatory settings
-    if [[ -z "${SERVER_WG_IPV4}" || -z "${SERVER_PORT}" ]]; then
-        echo -e "${RED}Could not reliably extract server IP address or ListenPort from ${wg_conf_file}.${NC}"
+    # Check if at least one IP (v4 or v6) and the port were found
+    if [[ (-z "${SERVER_WG_IPV4}" && -z "${SERVER_WG_IPV6}") || -z "${SERVER_PORT}" ]]; then
+        echo -e "${RED}Could not reliably extract server IP address (IPv4 or IPv6) or ListenPort from ${wg_conf_file}.${NC}"
+        echo -e "${RED}Stripped Config Content:\n${stripped_config}${NC}" # Debug output
+        echo -e "${RED}Extracted Address Line: ${address_line}${NC}"
+        echo -e "${RED}Extracted IPv4: ${SERVER_WG_IPV4}${NC}"
+        echo -e "${RED}Extracted IPv6: ${SERVER_WG_IPV6}${NC}"
+        echo -e "${RED}Extracted Port: ${SERVER_PORT}${NC}"
         echo -e "${RED}Please ensure the [Interface] section has 'Address' and 'ListenPort'.${NC}"
         exit 1
     fi
-     echo -e "${GREEN}Extracted Settings:${NC} IPv4=${SERVER_WG_IPV4}, IPv6=${SERVER_WG_IPV6:-N/A}, Port=${SERVER_PORT}"
+    echo -e "${GREEN}Extracted Settings:${NC} IPv4=${SERVER_WG_IPV4:-N/A}, IPv6=${SERVER_WG_IPV6:-N/A}, Port=${SERVER_PORT}"
 
     # Determine Public IP/NIC (Use current system state as fallback)
     SERVER_PUB_NIC=$(ip -4 route ls | grep default | awk '/dev/ {print $5}' | head -1)
@@ -498,13 +506,15 @@ function migrateWireGuard() {
              ENABLE_IPV6="n"
         fi
     fi
+    # Ensure ENABLE_IPV6 reflects extracted IPv6
+    [[ -n "${SERVER_WG_IPV6}" ]] && ENABLE_IPV6="y" || ENABLE_IPV6="n"
 
 
     # --- Create AmneziaWG directories and params file ---
     mkdir -p "${AWG_CONF_DIR}"
     chmod 700 "${AWG_CONF_DIR}"
 
-    # Write the params file
+    # Write the params file (IPs without CIDR)
     cat > "${PARAMS_FILE}" <<EOF
 SERVER_PUB_IP=${SERVER_PUB_IP}
 SERVER_PUB_NIC=${SERVER_PUB_NIC}
@@ -602,6 +612,9 @@ function migratePeers() {
         SERVER_PUB_KEY=${SERVER_PUB_KEY:-"UNKNOWN_SERVER_PUBKEY"}
         SERVER_PUB_IP=${SERVER_PUB_IP:-"UNKNOWN_SERVER_IP"}
         SERVER_PORT=${SERVER_PORT:-51820}
+        SERVER_WG_IPV4=${SERVER_WG_IPV4:-"10.0.0.1"} # Need defaults for server IPs too
+        SERVER_WG_IPV6=${SERVER_WG_IPV6:-""}
+        ENABLE_IPV6=${ENABLE_IPV6:-"n"}
         CLIENT_DNS_1=${CLIENT_DNS_1:-"8.8.8.8"}
         CLIENT_DNS_2=${CLIENT_DNS_2:-"8.8.4.4"}
         CLIENT_DNS_IPV6_1=${CLIENT_DNS_IPV6_1:-"2001:4860:4860::8888"}
@@ -614,10 +627,10 @@ function migratePeers() {
 
     echo -e "${GREEN}Generating AmneziaWG server configuration: ${server_conf_file}${NC}"
 
-    # Create base server configuration file
+    # Create base server configuration file (Add CIDR back here)
     cat > "${server_conf_file}" << EOF
 [Interface]
-Address = ${SERVER_WG_IPV4}/24$( [[ -n "${SERVER_WG_IPV6}" ]] && echo ",${SERVER_WG_IPV6}/64" )
+Address = ${SERVER_WG_IPV4}/24$( [[ ${ENABLE_IPV6} == 'y' && -n "${SERVER_WG_IPV6}" ]] && echo ",${SERVER_WG_IPV6}/64" )
 ListenPort = ${SERVER_PORT}
 PrivateKey = ${SERVER_PRIV_KEY}
 # AmneziaWG Obfuscation Params
@@ -634,9 +647,10 @@ MTU = ${MTU}
 EOF
 
     # Append PostUp/PostDown rules based on firewall type
+    local ip_v4_base="${SERVER_WG_IPV4%.*}" # Get e.g., 10.0.0 from 10.0.0.1
     if command -v firewall-cmd &> /dev/null && pgrep firewalld; then
         echo -e "${GREEN}Adding firewall-cmd rules...${NC}"
-        local FIREWALLD_IPV4_ADDRESS="${SERVER_WG_IPV4%.*}.0" # Get subnet like 10.0.0.0
+        local FIREWALLD_IPV4_ADDRESS="${ip_v4_base}.0" # Get subnet like 10.0.0.0
         # Add rules (consider adding --permanent and then --reload, but runtime is often preferred for wg-quick)
         echo "PostUp = firewall-cmd --zone=public --add-interface=${SERVER_WG_NIC}" >> "${server_conf_file}"
         echo "PostUp = firewall-cmd --add-port ${SERVER_PORT}/udp" >> "${server_conf_file}"
@@ -677,8 +691,8 @@ EOF
     fi
 
     # --- Process Peers ---
-    echo -e "${GREEN}Migrating peer configurations (generating NEW client files)...${NC}"
-    echo -e "${ORANGE}Client private keys cannot be migrated. Users will need the new config files.${NC}"
+    echo -e "${GREEN}Migrating peer configurations (generating NEW client files with obfuscation)...${NC}"
+    echo -e "${ORANGE}Clients MUST use these new config files to benefit from AmneziaWG obfuscation.${NC}"
 
     local peer_block=""
     local client_counter=0
@@ -711,16 +725,17 @@ EOF
 
         # --- Generate NEW Client Config ---
         local client_priv_key=""
-        local client_wg_ipv4=""
-        local client_wg_ipv6=""
+        local client_wg_ipv4_peer="" # IP extracted from peer's allowed IPs
+        local client_wg_ipv6_peer="" # IP extracted from peer's allowed IPs
 
         client_priv_key=$(awg genkey) # Generate NEW private key for client
 
         # Extract the *first* IPv4 and IPv6 from the peer's AllowedIPs for the client's Interface Address
-        client_wg_ipv4=$(echo "${peer_allowed_ips}" | tr ',' '\n' | grep -oP '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?=/)')
-        client_wg_ipv6=$(echo "${peer_allowed_ips}" | tr ',' '\n' | grep -oP '^[a-fA-F0-9:]+(?=/)') # May be empty
+        # Ensure we remove the CIDR suffix here for the Address line
+        client_wg_ipv4_peer=$(echo "${peer_allowed_ips}" | tr ',' '\n' | grep -oP '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+        client_wg_ipv6_peer=$(echo "${peer_allowed_ips}" | tr ',' '\n' | grep -oP '^[a-fA-F0-9:]+' | grep ':' | head -1 | sed 's|/.*||')
 
-        if [[ -z "${client_wg_ipv4}" ]]; then
+        if [[ -z "${client_wg_ipv4_peer}" ]]; then
             echo -e "${ORANGE}    Warning: Could not extract client IPv4 from AllowedIPs (${peer_allowed_ips}). Cannot generate client config.${NC}"
             continue
         fi
@@ -730,8 +745,9 @@ EOF
         cat > "${client_conf_path}" <<EOF
 [Interface]
 # Client configuration for ${client_name} - Generated during migration
+# Use this file to enable AmneziaWG obfuscation
 PrivateKey = ${client_priv_key}
-Address = ${client_wg_ipv4}/32$( [[ -n "${client_wg_ipv6}" ]] && echo ",${client_wg_ipv6}/128" )
+Address = ${client_wg_ipv4_peer}/32$( [[ -n "${client_wg_ipv6_peer}" ]] && echo ",${client_wg_ipv6_peer}/128" )
 DNS = ${CLIENT_DNS_1}${CLIENT_DNS_2:+,${CLIENT_DNS_2}}${CLIENT_DNS_IPV6_1:+,${CLIENT_DNS_IPV6_1}}${CLIENT_DNS_IPV6_2:+,${CLIENT_DNS_IPV6_2}}
 # AmneziaWG Obfuscation Params (match server)
 Jc = ${JC}
@@ -757,6 +773,7 @@ EOF
         echo -e "${GREEN}    Generated new client config: ${client_conf_path}${NC}"
 
         # --- Append Peer to Server Config ---
+        # We use the *original* public key from the old config here
         cat >> "${server_conf_file}" <<EOF
 
 ### Client ${client_name} (Migrated)
@@ -881,6 +898,7 @@ function installQuestions() {
     echo ""
 
 	# Network Interface Names
+    local SERVER_PUB_NIC_INPUT="" # Define locally
 	until [[ "${SERVER_PUB_NIC_INPUT}" =~ ^[a-zA-Z0-9_.-]+$ ]]; do
 		read -rp "Public Network Interface: " -e -i "${SERVER_PUB_NIC:-eth0}" SERVER_PUB_NIC_INPUT
 	done
@@ -891,17 +909,18 @@ function installQuestions() {
 	done
     echo ""
 
-	# VPN Internal Subnet
+	# VPN Internal Subnet (IP only, no CIDR)
 	until [[ "${SERVER_WG_IPV4}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; do
-		read -rp "VPN Internal Subnet IPv4 (Server IP): " -e -i "10.0.0.1" SERVER_WG_IPV4
+		read -rp "VPN Internal Subnet IPv4 (Server IP, e.g., 10.0.0.1): " -e -i "10.0.0.1" SERVER_WG_IPV4
 	done
 
 	if [[ ${ENABLE_IPV6} == 'y' ]]; then
-		until [[ "${SERVER_WG_IPV6}" =~ ^([a-fA-F0-9]{1,4}:){1,7}:([a-fA-F0-9]{1,4})?$ || "${SERVER_WG_IPV6}" == "::" ]]; do
+		# Accept standard IPv6 formats, without requiring CIDR
+        until [[ "${SERVER_WG_IPV6}" =~ ^([a-fA-F0-9]{1,4}:){1,7}[a-fA-F0-9]{1,4}$|^([a-fA-F0-9]{1,4}:){1,7}:([a-fA-F0-9]{1,4})?$|^::$ ]]; do
             # Suggest a unique local address
             local suggested_ipv6="fd$(openssl rand -hex 5)"
             suggested_ipv6="fd${suggested_ipv6:0:2}:${suggested_ipv6:2:4}:${suggested_ipv6:6:4}::1"
-			read -rp "VPN Internal Subnet IPv6 (Server IP): " -e -i "${suggested_ipv6}" SERVER_WG_IPV6
+			read -rp "VPN Internal Subnet IPv6 (Server IP, e.g., ${suggested_ipv6}): " -e -i "${suggested_ipv6}" SERVER_WG_IPV6
 		done
 	else
 		SERVER_WG_IPV6="" # Ensure it's empty if IPv6 disabled
@@ -982,10 +1001,9 @@ function installQuestions() {
                 CLIENT_DNS_IPV6_2=""
             fi
 			# Basic validation
-            if [[ -z "$CLIENT_DNS_1" ]]; then echo -e "${RED}Primary DNS cannot be empty. Defaulting to Cloudflare.${NC}"; dns_choice="2"; fi # Recurse or default
-            # Re-apply Cloudflare if custom was left empty
-            if [[ "$dns_choice" == "2" ]]; then
-                 CLIENT_DNS_1="1.1.1.1"; CLIENT_DNS_2="1.0.0.1"; CLIENT_DNS_IPV6_1="2606:4700:4700::1111"; CLIENT_DNS_IPV6_2="2606:4700:4700::1001"
+            if [[ -z "$CLIENT_DNS_1" ]]; then
+                echo -e "${RED}Primary DNS cannot be empty. Defaulting to Cloudflare.${NC}";
+                CLIENT_DNS_1="1.1.1.1"; CLIENT_DNS_2="1.0.0.1"; CLIENT_DNS_IPV6_1="2606:4700:4700::1111"; CLIENT_DNS_IPV6_2="2606:4700:4700::1001"
             fi
 			;;
 	esac
@@ -1081,7 +1099,7 @@ function setupServer() {
     [[ "$ENABLE_IPV6" == "y" ]] && ALLOWED_IPS="${ALLOWED_IPS},::/0"
   fi
 
-  # --- 4. Create server params file ---
+  # --- 4. Create server params file (IPs without CIDR) ---
   echo -e "${GREEN}Saving configuration parameters to ${PARAMS_FILE}...${NC}"
   cat > "${PARAMS_FILE}" <<EOF
 SERVER_PUB_IP=${SERVER_PUB_IP}
@@ -1121,7 +1139,7 @@ EOF
   # Apply sysctl settings
   sysctl --system
 
-  # --- 6. Configure the server interface ---
+  # --- 6. Configure the server interface (Add CIDR back here) ---
   local interface_config_file="${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"
   echo -e "${GREEN}Creating server interface configuration: ${interface_config_file}...${NC}"
   cat > "${interface_config_file}" <<EOF
@@ -1144,10 +1162,11 @@ EOF
 
   # --- 7. Configure Firewall Rules ---
   echo -e "${GREEN}Configuring firewall rules...${NC}"
+  local ip_v4_base="${SERVER_WG_IPV4%.*}" # Get e.g., 10.0.0 from 10.0.0.1
   # Append PostUp/PostDown rules based on firewall type
   if command -v firewall-cmd &> /dev/null && pgrep firewalld; then
     echo -e "${GREEN}Using firewall-cmd.${NC}"
-    local FIREWALLD_IPV4_ADDRESS="${SERVER_WG_IPV4%.*}.0" # Get subnet like 10.0.0.0
+    local FIREWALLD_IPV4_ADDRESS="${ip_v4_base}.0" # Get subnet like 10.0.0.0
     cat >> "${interface_config_file}" <<EOF
 PostUp = firewall-cmd --zone=public --add-interface=${SERVER_WG_NIC}
 PostUp = firewall-cmd --add-port ${SERVER_PORT}/udp
@@ -1244,9 +1263,13 @@ function installAmneziaWG() {
             # Try generic headers for the major version (e.g., linux-headers-generic on Ubuntu)
             kernel_headers_pkg="linux-headers-generic"
             if ! apt-cache show "${kernel_headers_pkg}" > /dev/null 2>&1; then
-                 echo -e "${RED}Error: Cannot find suitable linux-headers package.${NC}"
-                 echo -e "${RED}Please install kernel headers for $(uname -r) manually and retry.${NC}"
-                 exit 1
+                 # Another common pattern, especially on Debian derivatives
+                 kernel_headers_pkg="linux-headers-$(echo "$(uname -r)" | cut -d'-' -f3-)" # e.g. linux-headers-amd64
+                 if ! apt-cache show "${kernel_headers_pkg}" > /dev/null 2>&1; then
+                    echo -e "${RED}Error: Cannot find suitable linux-headers package.${NC}"
+                    echo -e "${RED}Please install kernel headers for $(uname -r) manually and retry.${NC}"
+                    exit 1
+                 fi
             fi
         fi
         # Install base dependencies + specific headers
@@ -1261,7 +1284,16 @@ function installAmneziaWG() {
              echo -e "${ORANGE}add-apt-repository command not found. Installing software-properties-common.${NC}"
              apt-get install -y software-properties-common
         fi
-        add-apt-repository -y ppa:amnezia/ppa || { echo -e "${RED}Failed to add Amnezia PPA.${NC}"; exit 1; }
+        # Handle potential GPG key issues more gracefully
+        add-apt-repository -y ppa:amnezia/ppa || {
+             echo -e "${RED}Failed to add Amnezia PPA directly. Trying manual GPG key import...${NC}"
+             # Attempt manual key import (adjust key ID/URL if needed based on PPA)
+             gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys E45A7054 && \
+             gpg --export --armor E45A7054 | sudo apt-key add - && \
+             add-apt-repository -y ppa:amnezia/ppa && \
+             echo -e "${GREEN}Manual GPG key import successful.${NC}" || \
+             { echo -e "${RED}Failed to add Amnezia PPA even after manual GPG key attempt.${NC}"; exit 1; }
+        }
         apt-get update
 
         # Install AmneziaWG
@@ -1333,7 +1365,9 @@ function newClient() {
     # Find the highest existing IP index and add 1
     local last_ip_part=1 # Start at .1 (server)
     # Extract last octet/part from existing client AllowedIPs in server config
-    local existing_ips=$(grep -oP 'AllowedIPs *= *\K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?=/)' "${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf")
+    # Make sure to match only IPs in the expected subnet base
+    local ip_v4_base="${SERVER_WG_IPV4%.*}" # Get e.g., 10.0.0 from 10.0.0.1
+    local existing_ips=$(grep -oP "AllowedIPs *= *\K${ip_v4_base}\.[0-9]+(?=/)" "${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf")
     if [[ -n "$existing_ips" ]]; then
         while IFS= read -r ip; do
             local current_last_part=$(echo "$ip" | cut -d'.' -f4)
@@ -1344,11 +1378,27 @@ function newClient() {
     fi
     local next_ip_index=$((last_ip_part + 1))
 
-    local client_wg_ipv4="${SERVER_WG_IPV4%.*}.${next_ip_index}"
+    local client_wg_ipv4="${ip_v4_base}.${next_ip_index}"
     local client_wg_ipv6=""
     if [[ ${ENABLE_IPV6} == 'y' && -n "${SERVER_WG_IPV6}" ]]; then
         # Construct IPv6 address, e.g., fd42:42:42::2
-        client_wg_ipv6=$(echo "${SERVER_WG_IPV6}" | sed "s/::.*/::${next_ip_index}/")
+        # More robustly handle existing indices if they don't start at ::1
+        local ipv6_base=$(echo "${SERVER_WG_IPV6}" | sed 's/::.*//') # Get base like fd42:42:42
+        # Find highest existing index for IPv6
+        local last_ipv6_part=1
+        local existing_ipv6s=$(grep -oP "AllowedIPs *=.*\K${ipv6_base}::[0-9a-fA-F]+(?=/)" "${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf")
+         if [[ -n "$existing_ipv6s" ]]; then
+             while IFS= read -r ip6; do
+                 local current_last_part_hex=$(echo "$ip6" | sed 's/.*:://') # Get hex index
+                 local current_last_part_dec=$((16#${current_last_part_hex})) # Convert hex to decimal
+                 if [[ "$current_last_part_dec" -gt "$last_ipv6_part" ]]; then
+                     last_ipv6_part=$current_last_part_dec
+                 fi
+             done <<< "$existing_ipv6s"
+         fi
+        local next_ipv6_index_dec=$((last_ipv6_part + 1))
+        # Convert back to hex if needed, or just use decimal for simplicity if supported
+        client_wg_ipv6="${ipv6_base}::${next_ipv6_index_dec}" # Use decimal index directly
     fi
 
     # Client config directory
@@ -1428,6 +1478,10 @@ EOF
 function listClients() {
     print_header "List Existing Clients"
 
+    # Source params if needed to ensure SERVER_WG_NIC is set
+    if [[ -z "${SERVER_WG_NIC}" && -f "${PARAMS_FILE}" ]]; then
+       source "${PARAMS_FILE}"
+    fi
     local server_conf_file="${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"
     if [[ ! -f "${server_conf_file}" ]]; then
         echo -e "${RED}Server configuration file not found: ${server_conf_file}${NC}"
@@ -1439,7 +1493,7 @@ function listClients() {
 
     if [[ -z "$clients" ]]; then
         echo -e "${ORANGE}No clients found in the configuration.${NC}"
-        return
+        return 1 # Indicate no clients found
     fi
 
     echo "Configured Clients for interface '${SERVER_WG_NIC}':"
@@ -1452,10 +1506,16 @@ function listClients() {
         # Extract AllowedIPs for this specific client
         # Use awk to find the block for the client and get AllowedIPs
         local client_ips=$(awk -v name="${client_name}" '
-            /^### Client / { current_name = $0; sub(/^### Client /, "", current_name) }
-            current_name == name && /^\[Peer\]/ { in_peer = 1 }
-            in_peer && /AllowedIPs *=/ { print $3; exit }
-            in_peer && /^$/ { in_peer = 0 } # Exit block on blank line
+            BEGIN { RS = "" ; FS = "\n" } # Process paragraph mode
+            $1 == "### Client " name {
+                for (i=1; i<=NF; i++) {
+                    if ($i ~ /AllowedIPs *=/) {
+                        sub(/AllowedIPs *= */, "", $i)
+                        print $i
+                        exit
+                    }
+                }
+            }
         ' "${server_conf_file}")
 
         # Pad or truncate the client name
@@ -1472,11 +1532,16 @@ function listClients() {
 
     echo -e "Client configuration files are typically stored in: ${client_config_dir}"
     echo ""
+    return 0 # Indicate success
 }
 
 function revokeClient() {
     print_header "Revoke AmneziaWG Client"
 
+    # Source params if needed
+    if [[ -z "${SERVER_WG_NIC}" && -f "${PARAMS_FILE}" ]]; then
+       source "${PARAMS_FILE}"
+    fi
     local server_conf_file="${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"
     if [[ ! -f "${server_conf_file}" ]]; then
         echo -e "${RED}Server configuration file not found: ${server_conf_file}${NC}"
@@ -1522,19 +1587,23 @@ function revokeClient() {
 
     # Remove the client's [Peer] section from the server config
     # Use awk for more robust block removal based on the ### Client comment
+    # Use paragraph mode (RS="")
     awk -v name="${selected_client}" '
-        /^### Client / { current_name = $0; sub(/^### Client /, "", current_name) }
-        current_name == name { in_block_to_delete = 1 }
-        !in_block_to_delete { print }
-        in_block_to_delete && /^$/ { in_block_to_delete = 0 } # Stop deleting after the blank line following the target block
+        BEGIN { RS = ""; FS = "\n"; ORS = "\n\n" } # Process paragraph mode, ensure blank line separator
+        !/^### Client / { print; next } # Print non-client blocks
+        $1 != "### Client " name { print } # Print client blocks that don't match
     ' "${server_conf_file}" > "${server_conf_file}.tmp"
 
+
     if [[ $? -eq 0 ]] && [[ -s "${server_conf_file}.tmp" ]]; then
-        mv "${server_conf_file}.tmp" "${server_conf_file}"
+        # awk in paragraph mode might add extra newlines, clean them up
+        grep -v '^$' "${server_conf_file}.tmp" | awk 'BEGIN{ORS="\n"}{print}' > "${server_conf_file}"
+        rm "${server_conf_file}.tmp"
         echo -e "${GREEN}Client section removed from server configuration.${NC}"
     else
         echo -e "${RED}Error removing client section from configuration. Restoring backup.${NC}"
-        mv "${server_conf_file}.bak.$(date +%s)" "${server_conf_file}" # Attempt restore (might fail if initial cp failed)
+        # Restore backup if tmp file failed or is empty
+        [[ -f "${server_conf_file}.bak.$(date +%s)" ]] && mv "${server_conf_file}.bak.$(date +%s)" "${server_conf_file}"
         rm -f "${server_conf_file}.tmp"
         return 1
     fi
@@ -1543,13 +1612,15 @@ function revokeClient() {
     local home_dir=""
     home_dir=$(getHomeDirForClient "${SUDO_USER:-root}")
     local client_config_dir="${home_dir}/amneziawg"
-    local client_conf_path="${client_config_dir}/${SERVER_WG_NIC}-${selected_client}.conf" # Needs sanitizing if name has spaces/symbols
+    # Sanitize client name for filename (replace spaces/special chars if needed, though validator should prevent them)
+    local safe_client_name=$(echo "${selected_client}" | sed 's/[^a-zA-Z0-9_-]/_/g')
+    local client_conf_path="${client_config_dir}/${SERVER_WG_NIC}-${safe_client_name}.conf"
 
     if [[ -f "${client_conf_path}" ]]; then
         echo -e "${GREEN}Deleting client configuration file: ${client_conf_path}${NC}"
         rm -f "${client_conf_path}"
     else
-         echo -e "${ORANGE}Client configuration file not found: ${client_conf_path}${NC}"
+         echo -e "${ORANGE}Client configuration file not found or already deleted: ${client_conf_path}${NC}"
     fi
 
     # Apply the updated server configuration live
@@ -1570,6 +1641,13 @@ function regenerateClientConfig() {
     print_header "Regenerate Client Configuration"
     echo -e "${GREEN}Regenerating configuration for client: ${client_name}${NC}"
 
+    # Source params if needed
+    if [[ -z "${SERVER_WG_NIC}" && -f "${PARAMS_FILE}" ]]; then
+       source "${PARAMS_FILE}"
+    elif [[ ! -f "${PARAMS_FILE}" ]]; then
+         echo -e "${RED}Server parameters file not found: ${PARAMS_FILE}${NC}"
+        return 1
+    fi
     local server_conf_file="${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"
     if [[ ! -f "${server_conf_file}" ]]; then
         echo -e "${RED}Server configuration file not found: ${server_conf_file}${NC}"
@@ -1577,40 +1655,44 @@ function regenerateClientConfig() {
     fi
 
     # Check if client exists
-    if ! grep -q "^### Client ${client_name}$" "${server_conf_file}"; then
+    if ! grep -q "^### Client ${client_name}" "${server_conf_file}"; then
         echo -e "${RED}Client '${client_name}' not found.${NC}"
-        return 1
-    fi
-
-    # Source current server settings
-    if [[ -f "${PARAMS_FILE}" ]]; then
-        source "${PARAMS_FILE}"
-    else
-        echo -e "${RED}Server parameters file not found: ${PARAMS_FILE}${NC}"
         return 1
     fi
 
     # Extract client's existing VPN IP addresses from server config
     local client_ips=$(awk -v name="${client_name}" '
-        /^### Client / { current_name = $0; sub(/^### Client /, "", current_name) }
-        current_name == name && /^\[Peer\]/ { in_peer = 1 }
-        in_peer && /AllowedIPs *=/ { print $3; exit }
-        in_peer && /^$/ { in_peer = 0 }
+        BEGIN { RS = "" ; FS = "\n" }
+        $1 == "### Client " name {
+            for (i=1; i<=NF; i++) {
+                if ($i ~ /AllowedIPs *=/) {
+                    sub(/AllowedIPs *= */, "", $i)
+                    print $i
+                    exit
+                }
+            }
+        }
     ' "${server_conf_file}")
 
     if [[ -z "$client_ips" ]]; then
          echo -e "${RED}Could not find AllowedIPs for client '${client_name}' in server config.${NC}"
          return 1
     fi
-    local client_wg_ipv4=$(echo "$client_ips" | tr ',' '\n' | grep -oP '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?=/)')
-    local client_wg_ipv6=$(echo "$client_ips" | tr ',' '\n' | grep -oP '^[a-fA-F0-9:]+(?=/)')
+    local client_wg_ipv4=$(echo "$client_ips" | tr ',' '\n' | grep -oP '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1) # No CIDR needed here
+    local client_wg_ipv6=$(echo "$client_ips" | tr ',' '\n' | grep -oP '^[a-fA-F0-9:]+' | grep ':' | head -1 | sed 's|/.*||') # No CIDR needed here
 
     # Extract existing PresharedKey from server config
     local client_psk=$(awk -v name="${client_name}" '
-        /^### Client / { current_name = $0; sub(/^### Client /, "", current_name) }
-        current_name == name && /^\[Peer\]/ { in_peer = 1 }
-        in_peer && /PresharedKey *=/ { print $3; exit }
-        in_peer && /^$/ { in_peer = 0 }
+        BEGIN { RS = "" ; FS = "\n" }
+        $1 == "### Client " name {
+            for (i=1; i<=NF; i++) {
+                if ($i ~ /PresharedKey *=/) {
+                    sub(/PresharedKey *= */, "", $i)
+                    print $i
+                    exit
+                }
+            }
+        }
     ' "${server_conf_file}")
 
     # Generate NEW keys for the client
@@ -1626,17 +1708,23 @@ function regenerateClientConfig() {
 
     # --- Update Server Config ---
     echo -e "${GREEN}Updating server configuration with new client public key...${NC}"
-    # Use awk to replace PublicKey for the specific client
+    # Use awk to replace PublicKey for the specific client (paragraph mode)
     awk -v name="${client_name}" -v new_pub_key="${client_pub_key}" '
-        /^### Client / { current_name = $0; sub(/^### Client /, "", current_name) }
-        current_name == name && /^\[Peer\]/ { in_peer = 1 }
-        in_peer && /PublicKey *=/ { $0 = "PublicKey = " new_pub_key } # Replace line
-        { print } # Print every line
-        in_peer && /^$/ { in_peer = 0 } # Reset block flag
+        BEGIN { RS = ""; FS = "\n"; ORS = "\n\n" }
+        $1 == "### Client " name {
+            for (i=1; i<=NF; i++) {
+                if ($i ~ /^PublicKey *=/) {
+                    $i = "PublicKey = " new_pub_key # Replace line
+                }
+            }
+        }
+        { print } # Print the (potentially modified) block or other blocks
     ' "${server_conf_file}" > "${server_conf_file}.tmp"
 
     if [[ $? -eq 0 ]] && [[ -s "${server_conf_file}.tmp" ]]; then
-        mv "${server_conf_file}.tmp" "${server_conf_file}"
+        # Clean up extra newlines from awk processing
+        grep -v '^$' "${server_conf_file}.tmp" | awk 'BEGIN{ORS="\n"}{print}' > "${server_conf_file}"
+        rm "${server_conf_file}.tmp"
     else
         echo -e "${RED}Error updating server configuration with new public key.${NC}"
         rm -f "${server_conf_file}.tmp"
@@ -1649,7 +1737,8 @@ function regenerateClientConfig() {
     local client_config_dir="${home_dir}/amneziawg"
     mkdir -p "${client_config_dir}"
     chmod 700 "${client_config_dir}"
-    local client_conf_path="${client_config_dir}/${SERVER_WG_NIC}-${client_name}.conf"
+    local safe_client_name=$(echo "${client_name}" | sed 's/[^a-zA-Z0-9_-]/_/g')
+    local client_conf_path="${client_config_dir}/${SERVER_WG_NIC}-${safe_client_name}.conf"
 
     echo -e "${GREEN}Generating new client configuration file: ${client_conf_path}${NC}"
     cat > "${client_conf_path}" <<EOF
@@ -1705,12 +1794,17 @@ EOF
 function regenerateAllClientConfigs() {
     print_header "Regenerate All Client Configurations"
     echo -e "${ORANGE}This will generate NEW keys and config files for ALL clients.${NC}"
+    echo -e "${ORANGE}You MUST distribute these new files to your clients.${NC}"
     read -rp "Are you sure you want to proceed? [y/n]: " -e -i "n" confirm_regen_all
     if [[ ${confirm_regen_all,,} != "y" ]]; then
         echo "Operation cancelled."
         return
     fi
 
+    # Source params if needed
+    if [[ -z "${SERVER_WG_NIC}" && -f "${PARAMS_FILE}" ]]; then
+       source "${PARAMS_FILE}"
+    fi
     local server_conf_file="${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"
     if [[ ! -f "${server_conf_file}" ]]; then
         echo -e "${RED}Server configuration file not found: ${server_conf_file}${NC}"
@@ -1763,15 +1857,15 @@ function setDefaultAmneziaSettings() {
     S2=100
     # Generate random magic headers if not already set (e.g., during first install)
     # Keep existing random headers if function is called again (e.g. during migration)
-    H1=${H1:-$((RANDOM * 100000 + 10000))}
-    H2=${H2:-$((RANDOM * 100000 + 20000))}
-    H3=${H3:-$((RANDOM * 100000 + 30000))}
-    H4=${H4:-$((RANDOM * 100000 + 40000))}
+    H1=${H1:-$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 10000))}
+    H2=${H2:-$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 20000))}
+    H3=${H3:-$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 30000))}
+    H4=${H4:-$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 40000))}
     MTU=1280
     # Ensure uniqueness (simple check)
-    while [[ ${H1} -eq ${H2} || ${H1} -eq ${H3} || ${H1} -eq ${H4} || ${H2} -eq ${H3} || ${H2} -eq ${H4} || ${H3} -eq ${H4} ]]; do
-        echo -e "${ORANGE}Regenerating default magic headers to ensure uniqueness...${NC}"
-        H1=$((RANDOM * 100000 + 10000)); H2=$((RANDOM * 100000 + 20000)); H3=$((RANDOM * 100000 + 30000)); H4=$((RANDOM * 100000 + 40000))
+    while [[ ${H1} -eq ${H2} || ${H1} -eq ${H3} || ${H1} -eq ${H4} || ${H2} -eq ${H3} || ${H2} -eq ${H4} || ${H3} -eq ${H4} || ${H1} -lt 5 || ${H2} -lt 5 || ${H3} -lt 5 || ${H4} -lt 5 ]]; do
+        echo -e "${ORANGE}Regenerating default magic headers to ensure uniqueness and minimum value...${NC}"
+        H1=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 10000)); H2=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 20000)); H3=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 30000)); H4=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 40000))
     done
 }
 
@@ -1829,15 +1923,15 @@ function configureObfuscationSettings() {
     1) # Mobile Preset
         new_JC=4; new_JMIN=40; new_JMAX=70; new_S1=50; new_S2=100; new_MTU=1280
         # Generate new random headers for preset change
-        new_H1=$((RANDOM*100000+10000)); new_H2=$((RANDOM*100000+20000))
-        new_H3=$((RANDOM*100000+30000)); new_H4=$((RANDOM*100000+40000))
+        new_H1=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 10000)); new_H2=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 20000))
+        new_H3=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 30000)); new_H4=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 40000))
         echo -e "${GREEN}Applying Mobile preset with new random magic headers.${NC}"
         ;;
     2) # Standard Preset
         new_JC=2; new_JMIN=100; new_JMAX=200; new_S1=100; new_S2=200; new_MTU=1420
         # Generate new random headers for preset change
-        new_H1=$((RANDOM*100000+10000)); new_H2=$((RANDOM*100000+20000))
-        new_H3=$((RANDOM*100000+30000)); new_H4=$((RANDOM*100000+40000))
+        new_H1=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 10000)); new_H2=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 20000))
+        new_H3=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 30000)); new_H4=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 40000))
         echo -e "${GREEN}Applying Standard preset with new random magic headers.${NC}"
         ;;
     3) # Custom Settings
@@ -1898,8 +1992,8 @@ function configureObfuscationSettings() {
                   ${new_H2} -eq ${new_H3} || ${new_H2} -eq ${new_H4} || ${new_H3} -eq ${new_H4} || \
                   ${new_H1} -le 4 || ${new_H2} -le 4 || ${new_H3} -le 4 || ${new_H4} -le 4 ]]; do # Also check > 4 here
             echo -e "${ORANGE}Magic headers must be unique and greater than 4. Regenerating random headers...${NC}"
-            new_H1=$((RANDOM*100000+10000)); new_H2=$((RANDOM*100000+20000))
-            new_H3=$((RANDOM*100000+30000)); new_H4=$((RANDOM*100000+40000))
+            new_H1=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 10000)); new_H2=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 20000))
+            new_H3=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 30000)); new_H4=$((RANDOM % 32767 * 1000 + RANDOM % 1000 + 40000))
         done
     fi
 
@@ -1938,15 +2032,19 @@ function updateServerConfig() {
     # This function updates the server config file and params file with current global variable values
     # It should be called after global variables (JC, JMIN, ..., MTU, ALLOWED_IPS) have been updated.
 
+    # Source params if needed
+    if [[ -z "${SERVER_WG_NIC}" && -f "${PARAMS_FILE}" ]]; then
+       source "${PARAMS_FILE}"
+    elif [[ ! -f "${PARAMS_FILE}" ]]; then
+        echo -e "${RED}Parameters file not found: ${PARAMS_FILE}${NC}"
+        return 1
+    fi
     local server_conf_file="${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"
     if [[ ! -f "${server_conf_file}" ]]; then
         echo -e "${RED}Server configuration file not found: ${server_conf_file}${NC}"
         return 1
     fi
-    if [[ ! -f "${PARAMS_FILE}" ]]; then
-        echo -e "${RED}Parameters file not found: ${PARAMS_FILE}${NC}"
-        return 1
-    fi
+
 
     echo -e "${GREEN}Updating server configuration files with new settings...${NC}"
 
@@ -1970,12 +2068,14 @@ function updateServerConfig() {
 
     # Update settings in params file
     # Use sed; if the line doesn't exist, append it (less robust than proper parsing but ok for this)
-    local keys_to_update=("JC" "JMIN" "JMAX" "S1" "S2" "H1" "H2" "H3" "H4" "MTU" "ALLOWED_IPS")
+    local keys_to_update=("JC" "JMIN" "JMAX" "S1" "S2" "H1" "H2" "H3" "H4" "MTU" "ALLOWED_IPS" "ENABLE_IPV6" "SERVER_WG_IPV4" "SERVER_WG_IPV6") # Add other changeable params if needed
     for key in "${keys_to_update[@]}"; do
         local value="${!key}" # Indirect variable expansion
+        # Escape characters for sed (specifically / and &)
+        local sed_value=$(echo "${value}" | sed -e 's/[\/&]/\\&/g')
         # Check if key exists
         if grep -q "^${key}=" "${PARAMS_FILE}"; then
-             sed -i "s|^${key}=.*|${key}=${value}|" "${PARAMS_FILE}"
+             sed -i "s|^${key}=.*|${key}=${sed_value}|" "${PARAMS_FILE}"
         else
              echo "${key}=${value}" >> "${PARAMS_FILE}" # Append if missing
         fi
@@ -2008,7 +2108,21 @@ function configureAllowedIPs() {
      # Read current default if available
     [[ -f "${AWG_CONF_DIR}/default_routing" ]] && current_default_ips=$(cat "${AWG_CONF_DIR}/default_routing")
     local default_choice=1 # Default to All Traffic
-    if [[ "$current_default_ips" != "0.0.0.0/0"* ]]; then default_choice=2; fi # Guess if it's not all traffic
+    # Try to guess current setting for better default prompt
+    if [[ -z "$current_default_ips" ]]; then
+        default_choice=1 # Default to All Traffic if file missing
+    elif [[ "$current_default_ips" == "0.0.0.0/0"* ]]; then
+        default_choice=1 # All Traffic
+    elif echo "$current_default_ips" | grep -qE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}'; then
+        # Looks like specific CIDRs, guess Custom or maybe Web/Russia list
+         if [[ $(echo "$current_default_ips" | tr ',' '\n' | wc -l) -gt 10 ]]; then
+             default_choice=3 # Guess Russia list if many entries
+         else
+             default_choice=4 # Guess Custom otherwise
+         fi
+         # Web selection is transient, hard to guess
+    fi
+
 
     until [[ "$route_option" =~ ^[1-4]$ ]]; do
         read -rp "Select default routing option [1-4]: " -e -i "${default_choice}" route_option
@@ -2016,10 +2130,18 @@ function configureAllowedIPs() {
 
     local temp_allowed_ips="" # Use a temporary variable
 
+    # Source params to know if IPv6 is enabled
+    local current_enable_ipv6="y" # Assume yes unless params says no
+    if [[ -f "${PARAMS_FILE}" ]]; then
+        source "${PARAMS_FILE}"
+        current_enable_ipv6="${ENABLE_IPV6}"
+    fi
+
+
     case "${route_option}" in
     1) # All Traffic
         temp_allowed_ips="0.0.0.0/0"
-        if [[ ${ENABLE_IPV6} == "y" ]]; then
+        if [[ ${current_enable_ipv6,,} == "y" ]]; then
              temp_allowed_ips="${temp_allowed_ips},::/0"
         fi
         echo -e "${GREEN}Default routing set to: All Traffic (${temp_allowed_ips})${NC}"
@@ -2037,12 +2159,14 @@ function configureAllowedIPs() {
              return 1
         fi
         temp_allowed_ips="${selected_ips}"
-        # Add IPv6 all route if IPv6 enabled and not already present? Risky.
-        # User should select IPv6 services if needed.
-        # if [[ ${ENABLE_IPV6} == "y" ]] && ! echo "${temp_allowed_ips}" | grep -q "::/"; then
-        #      echo -e "${ORANGE}Warning: Adding '::/0' for IPv6 as it was enabled globally.${NC}"
-        #      temp_allowed_ips="${temp_allowed_ips},::/0"
-        # fi
+        # Decide whether to add ::/0 based on global IPv6 setting
+        if [[ ${current_enable_ipv6,,} == "y" ]] && ! echo "${temp_allowed_ips}" | grep -q "::/"; then
+             echo -e "${ORANGE}Warning: Global IPv6 is enabled, but selected services might not include IPv6 routes.${NC}"
+             echo -e "${ORANGE}Consider adding '::/0' or selecting IPv6 services if needed.${NC}"
+             # Optionally, automatically add it:
+             # read -rp "Add '::/0' to route all IPv6 traffic? [y/n]: " -e -i "n" add_ipv6_all
+             # if [[ ${add_ipv6_all,,} == 'y' ]]; then temp_allowed_ips="${temp_allowed_ips},::/0"; fi
+        fi
         echo -e "${GREEN}Default routing set to: Selected Services (${temp_allowed_ips})${NC}"
         ;;
     3) # Russia Blocked List
@@ -2072,10 +2196,12 @@ function configureAllowedIPs() {
         fi
 
         # Decide whether to add ::/0 based on global IPv6 setting
-        if [[ ${ENABLE_IPV6} == "y" ]]; then
+        if [[ ${current_enable_ipv6,,} == "y" ]]; then
              temp_allowed_ips="${temp_allowed_ips},::/0" # Route all IPv6
+             echo -e "${GREEN}Default routing set to: Russia Blocked List + All IPv6${NC}"
+        else
+             echo -e "${GREEN}Default routing set to: Russia Blocked List (IPv4 Only)${NC}"
         fi
-        echo -e "${GREEN}Default routing set to: Russia Blocked List + All IPv6 (if enabled)${NC}"
         # echo "DEBUG: ${temp_allowed_ips}" # Optional: Show the long list
         ;;
     4) # Custom List
@@ -2140,16 +2266,24 @@ function installWebServerDependencies() {
     fi
 
     # Need a web server: python3 preferred, then python, then php
-    if ! command -v python3 &>/dev/null && ! command -v python &>/dev/null && ! command -v php &>/dev/null; then
-        # Try installing python3
-        missing_packages="${missing_packages} python3"
-        # If RHEL/CentOS 7, python might be python 2, check specifically
-        # if [[ ${OS} == "rhel" ]] && echo "$OS_VERSION" | grep -q "^7"; then
-        #     missing_packages="${missing_packages} python" # May still need python3 from other repos
-        # fi
-        # PHP as last resort
-        # missing_packages="${missing_packages} php-cli" # or just php depending on distro
+    local python_cmd="python3" # Prefer python3
+    if ! command -v python3 &>/dev/null; then
+        if command -v python &>/dev/null; then
+            python_cmd="python" # Fallback to python (could be python2)
+        elif ! command -v php &>/dev/null; then
+            # Only add python3 if NO web server found
+             missing_packages="${missing_packages} python3"
+        fi
     fi
+    # If python fallback was chosen, check if it's python2 and if SimpleHTTPServer module exists
+    if [[ "$python_cmd" == "python" ]] && ! $python_cmd -m SimpleHTTPServer --help &>/dev/null; then
+         # If 'python' exists but doesn't have SimpleHTTPServer, try installing python3
+         if ! command -v python3 &>/dev/null; then
+            missing_packages="${missing_packages} python3"
+         fi
+         # If PHP exists, we might rely on that instead, otherwise error later
+    fi
+
 
     if [[ -n "${missing_packages}" ]]; then
         echo -e "${GREEN}Installing missing dependencies: ${missing_packages}${NC}"
@@ -2189,6 +2323,9 @@ function generate_cidr_data() {
     # Find category directories
     while IFS= read -r -d $'\0' category_path; do
         local category_name=$(basename "$category_path")
+        # Skip if not a directory (safety check)
+        [[ ! -d "$category_path" ]] && continue
+
         echo -e "\n${BOLD_GREEN}--- Category: ${category_name} ---${NC}"
 
         # Find service files within category
@@ -2196,25 +2333,26 @@ function generate_cidr_data() {
             local service_id=$(basename "$service_file" .json)
             echo -e "${BOLD_GREEN}  Processing service: ${service_id}${NC}" # Use BOLD_GREEN for consistency
 
-            # Extract CIDRs using jq
-            local cidrs=""
+            # Extract CIDRs using jq (Combine IPv4 and IPv6)
+            local cidrs4="" cidrs6="" cidrs_combined=""
             # Handle potential jq errors (e.g., invalid JSON file)
-            cidrs=$(jq -c '.cidr4 // []' "$service_file" 2>/dev/null) || {
-                echo -e "${ORANGE}    Warning: Failed to process JSON or no cidr4 found in ${service_file}. Skipping.${NC}"
-                continue
-            }
+            cidrs4=$(jq -c '.cidr4 // []' "$service_file" 2>/dev/null) || cidrs4="[]"
+            cidrs6=$(jq -c '.cidr6 // []' "$service_file" 2>/dev/null) || cidrs6="[]"
 
 
-            # Skip if no CIDRs or jq failed
-            if [[ "$cidrs" = "[]" ]] || [[ -z "$cidrs" ]]; then
-                echo -e "${ORANGE}    No CIDRs found, skipping.${NC}"
+            # Skip if both are empty
+            if [[ "$cidrs4" = "[]" && "$cidrs6" = "[]" ]]; then
+                echo -e "${ORANGE}    No CIDRs (v4 or v6) found, skipping.${NC}"
                 continue
             fi
+
+            # Combine arrays using jq
+            cidrs_combined=$(jq -n --argjson a1 "$cidrs4" --argjson a2 "$cidrs6" '$a1 + $a2')
 
             # Add a jq assignment part for this service (ensure service_id is quoted for jq)
             # Escape potential quotes in service_id although unlikely given file naming
             local jq_service_id=$(jq -nr --arg str "$service_id" '$str')
-            jq_filter_parts+=(".services[$jq_service_id] = {\"cidrs\": $cidrs}")
+            jq_filter_parts+=(".services[$jq_service_id] = {\"cidrs\": $cidrs_combined}")
 
         done < <(find "$category_path" -maxdepth 1 -name "*.json" -type f -print0)
     done < <(find "$iplist_config_dir" -mindepth 1 -maxdepth 1 -type d -print0) # mindepth 1 avoids the top dir
@@ -2249,9 +2387,10 @@ function startWebServer() {
     local web_server_pid=""
     local temp_dir=""
     local selected_ips=""
+    local web_port=8080 # Default port
 
     # Cleanup trap
-    trap 'echo -e "\n${ORANGE}Web server stopped.${NC}"; [[ -n "$web_server_pid" ]] && kill "$web_server_pid" >/dev/null 2>&1; [[ -n "$temp_dir" ]] && rm -rf "$temp_dir"; trap - INT; return 1' INT
+    trap 'echo -e "\n${ORANGE}Stopping web server and cleaning up...${NC}"; [[ -n "$web_server_pid" ]] && kill "$web_server_pid" >/dev/null 2>&1; [[ -n "$temp_dir" ]] && rm -rf "$temp_dir"; trap - INT; return 1' INT
 
     if ! installWebServerDependencies; then
         trap - INT # Remove trap before returning
@@ -2294,7 +2433,7 @@ function startWebServer() {
         local iplist_zip_url="https://github.com/rekryt/iplist/archive/refs/heads/master.zip"
         local zip_file="${temp_dir}/iplist.zip"
         local dl_cmd=""
-        if command -v curl &>/dev/null; then dl_cmd="curl -L -o"; else dl_cmd="wget -q -O"; fi
+        if command -v curl &>/dev/null; then dl_cmd="curl -sSL -o"; else dl_cmd="wget -q -O"; fi # Added -sL to curl
 
         if ! $dl_cmd "${zip_file}" "${iplist_zip_url}"; then
              echo -e "${RED}Failed to download iplist zip file.${NC}"; rm -rf "${temp_dir}"; trap - INT; return 1
@@ -2320,25 +2459,41 @@ function startWebServer() {
     local webserver_address="0.0.0.0" # Listen on all interfaces
     local display_address=""
         # Try to get a usable display IP
-    display_address=$(hostname -I | awk '{print $1}') # Get first IP from hostname -I
-    if [[ -z "$display_address" ]]; then display_address=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v 127.0.0.1 | head -1); fi
-    if [[ -z "$display_address" ]]; then display_address="127.0.0.1"; fi # Fallback
+    display_address=$(ip -4 route get 1.1.1.1 | awk '{print $7}' | head -n1) # More reliable way to get outbound IP
+    if [[ -z "$display_address" ]]; then display_address=$(hostname -I | awk '{print $1}'); fi # Fallback 1
+    if [[ -z "$display_address" ]]; then display_address=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v 127.0.0.1 | head -1); fi # Fallback 2
+    if [[ -z "$display_address" ]]; then display_address="127.0.0.1"; fi # Last resort
 
-    local web_port=8080
     local server_cmd=""
 
-    # Find available server command
-    if command -v python3 &>/dev/null; then
-        server_cmd="python3 -m http.server ${web_port} --bind ${webserver_address}"
-    elif command -v python &>/dev/null; then
-        # Python 2 SimpleHTTPServer doesn't have --bind, listens on 0.0.0.0 by default
-        server_cmd="python -m SimpleHTTPServer ${web_port}"
-    elif command -v php &>/dev/null; then
-        server_cmd="php -S ${webserver_address}:${web_port}"
-    else
-        echo -e "${RED}No suitable web server found (Python 3/2 or PHP). Cannot start selection interface.${NC}"
-        rm -rf "${temp_dir}"; trap - INT; return 1
-    fi
+    # Find available server command and check port availability
+    while true; do
+        if ss -tuln | grep -q ":${web_port}\s" ; then
+            echo -e "${ORANGE}Port ${web_port} is already in use. Trying next port...${NC}"
+            ((web_port++))
+            if [[ $web_port -gt 65535 ]]; then # Should not happen, but safety check
+                echo -e "${RED}Could not find an available port.${NC}"; rm -rf "${temp_dir}"; trap - INT; return 1
+            fi
+            continue # Retry check with new port
+        fi
+
+        # Port is free, determine command
+        if command -v python3 &>/dev/null; then
+            server_cmd="python3 -m http.server ${web_port} --bind ${webserver_address}"
+            break # Found command
+        elif command -v python &>/dev/null && python -m SimpleHTTPServer --help &>/dev/null; then
+            # Python 2 SimpleHTTPServer doesn't have --bind, listens on 0.0.0.0 by default
+            server_cmd="python -m SimpleHTTPServer ${web_port}"
+            break # Found command
+        elif command -v php &>/dev/null; then
+            server_cmd="php -S ${webserver_address}:${web_port} -t ." # Need -t . for current dir
+            break # Found command
+        else
+            echo -e "${RED}No suitable web server found (Python 3/2 or PHP). Cannot start selection interface.${NC}"
+            rm -rf "${temp_dir}"; trap - INT; return 1
+        fi
+    done
+
 
     echo ""
     print_header "Service Selection via Web Browser"
@@ -2352,8 +2507,15 @@ function startWebServer() {
     echo ""
 
     # Start server in background
-    (cd "${website_source_dir}" && ${server_cmd} &> /dev/null) &
+    (cd "${website_source_dir}" && ${server_cmd} &> "${temp_dir}/webserver.log") &
     web_server_pid=$!
+    sleep 1 # Give server a moment to start
+
+    # Check if server started successfully
+    if ! ps -p $web_server_pid > /dev/null; then
+        echo -e "${RED}Web server failed to start. Check logs: ${temp_dir}/webserver.log${NC}"
+        rm -rf "${temp_dir}"; trap - INT; return 1
+    fi
 
     # Wait for user to paste the list
     echo -n -e "${GREEN}Paste the generated IP list here: ${NC}"
@@ -2393,8 +2555,8 @@ function startWebServer() {
          echo "${selected_ips}"
          return 0
     else
-         # This case might happen if server exited unexpectedly
-         echo -e "\n${ORANGE}Web server exited unexpectedly. Continuing with selected IPs.${NC}"
+         # This case might happen if server exited unexpectedly before Ctrl+C
+         echo -e "\n${ORANGE}Web server exited. Continuing with selected IPs.${NC}"
          echo "${selected_ips}"
          return 0
     fi
@@ -2407,14 +2569,20 @@ function cleanup() {
     echo -e "${GREEN}Removing AmneziaWG configuration files...${NC}"
     # Use -f to avoid errors if files/dirs don't exist
     rm -f "${PARAMS_FILE}"
-    rm -f "${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"
-    rm -f "${AWG_CONF_DIR}/default_routing"
+    # Source SERVER_WG_NIC one last time if possible, just for the config file name
+    if [[ -z "${SERVER_WG_NIC}" && -f "${PARAMS_FILE}" ]]; then
+        source "${PARAMS_FILE}"
+    fi
+    [[ -n "${SERVER_WG_NIC}" ]] && rm -f "${AWG_CONF_DIR}/${SERVER_WG_NIC}.conf"
+    rm -f "${AWG_CONF_DIR}/default_routing" # Remove the routing file (FIXED)
+
     # Remove potentially empty directory, check if empty first
     if [ -d "${AWG_CONF_DIR}" ] && [ -z "$(ls -A "${AWG_CONF_DIR}")" ]; then
          rmdir "${AWG_CONF_DIR}"
+         echo -e "${GREEN}Removed directory ${AWG_CONF_DIR}.${NC}"
     elif [ -d "${AWG_CONF_DIR}" ]; then
          echo -e "${ORANGE}Warning: Directory ${AWG_CONF_DIR} is not empty. Not removing.${NC}"
-         echo -e "${ORANGE}You may need to remove it manually if desired.${NC}"
+         echo -e "${ORANGE}You may need to remove it manually if desired: rm -rf ${AWG_CONF_DIR}${NC}"
     fi
 
     # Remove sysctl config
@@ -2425,7 +2593,9 @@ function cleanup() {
     # Remove repository configs
     if [[ ${OS} == "ubuntu" || ${OS} == "debian" ]]; then
         rm -f /etc/apt/sources.list.d/amnezia*.list # Remove amnezia PPA file
-        # Consider apt update here? Maybe not needed for uninstall.
+        rm -f /etc/apt/sources.list.d/amnezia*.sources # Also remove new format if present
+        echo -e "${GREEN}Attempting apt update to refresh sources after PPA removal...${NC}"
+        apt-get update > /dev/null 2>&1 || echo -e "${ORANGE}apt update failed, may need manual run.${NC}"
     elif [[ ${OS} == "rhel" ]]; then
         rm -f /etc/yum.repos.d/amnezia.repo
     fi
@@ -2436,7 +2606,7 @@ function cleanup() {
 function uninstallWg() {
     print_header "Uninstall AmneziaWG"
     echo -e "${RED}WARNING: This will stop AmneziaWG, remove its packages,${NC}"
-    echo -e "${RED}         and delete configuration files (${AWG_CONF_DIR}).${NC}"
+    echo -e "${RED}         and delete configuration files in ${AWG_CONF_DIR}.${NC}"
     echo -e "${ORANGE}Client configuration files in user home directories will NOT be deleted.${NC}"
     echo ""
     read -rp "Are you sure you want to uninstall AmneziaWG? [y/n]: " -e -i "n" confirm_uninstall
@@ -2451,7 +2621,8 @@ function uninstallWg() {
         source "${PARAMS_FILE}"
     else
         # Prompt if params file missing
-        read -rp "Enter the AmneziaWG interface name used (e.g., awg0): " -e -i "${SERVER_WG_NIC}" SERVER_WG_NIC
+        read -rp "Enter the AmneziaWG interface name used (e.g., awg0): " -e -i "${SERVER_WG_NIC}" SERVER_WG_NIC_INPUT
+        SERVER_WG_NIC="${SERVER_WG_NIC_INPUT}" # Use input if params missing
     fi
 
     # Stop the service
@@ -2460,18 +2631,19 @@ function uninstallWg() {
     if systemctl is-active --quiet "${service_name}"; then systemctl stop "${service_name}"; fi
     if systemctl is-enabled --quiet "${service_name}"; then systemctl disable "${service_name}"; fi
 
+    # Run cleanup FIRST to remove configs that might prevent package removal
+    cleanup # This function removes files and sysctl settings
+
     # Remove packages
     echo -e "${GREEN}Removing AmneziaWG packages...${NC}"
     if [[ ${OS} == "ubuntu" || ${OS} == "debian" ]]; then
-        apt-get remove -y amneziawg
+        apt-get remove --purge -y amneziawg # Use purge to remove configs owned by package
         apt-get autoremove -y
     elif [[ ${OS} == "rhel" ]]; then
         yum remove -y amneziawg || dnf remove -y amneziawg
         yum autoremove -y || dnf autoremove -y
     fi
 
-    # Run cleanup to remove configs
-    cleanup # This function removes files and sysctl settings
 
     echo ""
     echo -e "${GREEN}AmneziaWG has been uninstalled successfully.${NC}"
@@ -2494,9 +2666,14 @@ function manageMenu() {
 	fi
 
     while true; do
+        # Re-source params each time in case they were changed by an option
+        [[ -f "${PARAMS_FILE}" ]] && source "${PARAMS_FILE}"
+
         print_header "AmneziaWG Management Panel"
         echo "Server Interface: ${SERVER_WG_NIC}"
         echo "Listen Port: ${SERVER_PORT}"
+        echo "Public Endpoint: ${SERVER_PUB_IP}"
+        echo "Default Routing: ${ALLOWED_IPS}"
         echo ""
         echo "Select an option:"
         echo "   1) Add a new client"
@@ -2525,8 +2702,7 @@ function manageMenu() {
             revokeClient
             ;;
         4) # Regenerate specific client
-            listClients # Show list first
-            if [[ $? -eq 0 ]]; then # Check if listClients found clients
+            if listClients; then # Only proceed if listClients succeeded (found clients)
                  read -rp "Enter the name of the client to regenerate: " client_to_regen
                  if [[ -n "$client_to_regen" ]]; then
                     regenerateClientConfig "$client_to_regen"
@@ -2542,17 +2718,27 @@ function manageMenu() {
              # Configure Allowed IPs (updates global var and file)
              if configureAllowedIPs; then
                  # Update server params file with new ALLOWED_IPS
-                 updateServerConfig # Updates params/server config & restarts service
+                 # updateServerConfig is called within configureObfuscationSettings if changes are made
+                 # Here we only changed AllowedIPs, so just need to update params and maybe restart
+                 echo -e "${GREEN}Updating parameter file with new default routing...${NC}"
+                 if grep -q "^ALLOWED_IPS=" "${PARAMS_FILE}"; then
+                    local sed_allowed_ips=$(echo "${ALLOWED_IPS}" | sed -e 's/[\/&]/\\&/g')
+                    sed -i "s|^ALLOWED_IPS=.*|ALLOWED_IPS=${sed_allowed_ips}|" "${PARAMS_FILE}"
+                 else
+                    echo "ALLOWED_IPS=${ALLOWED_IPS}" >> "${PARAMS_FILE}"
+                 fi
+
+                 echo -e "${GREEN}Parameter file updated. No service restart needed for default routing change.${NC}"
+                 echo -e "${ORANGE}Remember: This only affects NEWLY generated clients.${NC}"
 
                  # Ask if regenerate all client configs
                  echo ""
-                 read -rp "Regenerate ALL client configurations with the new default routing? [y/n]: " -e -i "n" regen_clients
+                 read -rp "Regenerate ALL client configurations now to use the new default routing? [y/n]: " -e -i "n" regen_clients
                  if [[ ${regen_clients,,} == 'y' ]]; then
                      regenerateAllClientConfigs
                  else
                      echo -e "${ORANGE}Client configurations were NOT regenerated.${NC}"
                      echo -e "${ORANGE}Existing clients will keep their current AllowedIPs setting.${NC}"
-                     echo -e "${ORANGE}Only NEW clients will use the updated default routing.${NC}"
                  fi
              else
                  echo -e "${RED}Failed to configure default routing.${NC}"
